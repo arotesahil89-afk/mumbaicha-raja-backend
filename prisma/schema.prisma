@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      String   @default("admin")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("admins")
+}
+
+model Award {
+  id            String   @id @default(cuid())
+  language      String   // "en", "hi", "mr"
+  text          String   // Award text
+  heading       String   // Section heading
+  displayOrder  Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([language, text])
+  @@index([language])
+  @@map("awards")
+}
+
+model Event {
+  id              String   @id @default(cuid())
+  titleEn         String
+  titleHi         String
+  titleMr         String
+  descriptionEn   String   @db.Text
+  descriptionHi   String   @db.Text
+  descriptionMr   String   @db.Text
+  eventDate       DateTime
+  eventTime       String   // "8:00 AM" format
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([eventDate])
+  @@map("events")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // "CREATE", "UPDATE", "DELETE"
+  entity    String   // "award", "event", "admin"
+  entityId  String
+  changes   Json     // What was changed
+  adminId   String
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
