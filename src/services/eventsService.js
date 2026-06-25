@@ -26,18 +26,23 @@ export const eventsService = {
   },
 
   async create(data) {
-    const event = await prisma.event.create({
-      data: {
-        titleEn: data.titleEn,
-        titleHi: data.titleHi,
-        titleMr: data.titleMr,
-        descriptionEn: data.descriptionEn,
-        descriptionHi: data.descriptionHi,
-        descriptionMr: data.descriptionMr,
-        eventDate: new Date(data.eventDate),
-        eventTime: data.eventTime,
-      },
-    });
+  console.log("EVENT DATA RECEIVED:", JSON.stringify(data, null, 2));
+
+  const event = await prisma.event.create({
+    data: {
+      titleEn: data.title?.en,
+      titleHi: data.title?.hi,
+      titleMr: data.title?.mr,
+
+      descriptionEn: data.description?.en,
+      descriptionHi: data.description?.hi,
+      descriptionMr: data.description?.mr,
+
+      eventDate: new Date(data.date),
+      eventTime: data.time,
+    },
+  });
+
 
     await prisma.auditLog.create({
       data: {
