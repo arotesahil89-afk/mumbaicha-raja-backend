@@ -33,25 +33,46 @@ export const updateAwardSchema = Joi.object({
 });
 
 export const createEventSchema = Joi.object({
-  titleEn: Joi.string().required(),
-  titleHi: Joi.string().required(),
-  titleMr: Joi.string().required(),
-  descriptionEn: Joi.string().required(),
-  descriptionHi: Joi.string().required(),
-  descriptionMr: Joi.string().required(),
-  eventDate: Joi.date().iso().required(),
-  eventTime: Joi.string().pattern(/^\d{1,2}:\d{2}\s(AM|PM)$/).required().messages({
-    'string.pattern.base': 'Time must be in format HH:MM AM/PM',
-  }),
+  title: Joi.object({
+    en: Joi.string().required(),
+    hi: Joi.string().required(),
+    mr: Joi.string().required(),
+  }).required(),
+
+  description: Joi.object({
+    en: Joi.string().required(),
+    hi: Joi.string().required(),
+    mr: Joi.string().required(),
+  }).required(),
+
+  date: Joi.string().required(),
+
+  eventTime: Joi.forbidden(),
+
+  time: Joi.string()
+    .pattern(/^\d{1,2}:\d{2}\s(AM|PM)$/)
+    .required()
+    .messages({
+      "string.pattern.base": "Time must be in format HH:MM AM/PM",
+    }),
 });
 
 export const updateEventSchema = Joi.object({
-  titleEn: Joi.string().optional(),
-  titleHi: Joi.string().optional(),
-  titleMr: Joi.string().optional(),
-  descriptionEn: Joi.string().optional(),
-  descriptionHi: Joi.string().optional(),
-  descriptionMr: Joi.string().optional(),
-  eventDate: Joi.date().iso().optional(),
-  eventTime: Joi.string().pattern(/^\d{1,2}:\d{2}\s(AM|PM)$/).optional(),
+  title: Joi.object({
+    en: Joi.string(),
+    hi: Joi.string(),
+    mr: Joi.string(),
+  }).optional(),
+
+  description: Joi.object({
+    en: Joi.string(),
+    hi: Joi.string(),
+    mr: Joi.string(),
+  }).optional(),
+
+  date: Joi.string().optional(),
+
+  time: Joi.string()
+    .pattern(/^\d{1,2}:\d{2}\s(AM|PM)$/)
+    .optional(),
 });

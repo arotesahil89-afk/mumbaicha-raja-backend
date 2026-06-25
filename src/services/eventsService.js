@@ -64,12 +64,12 @@ export const eventsService = {
     const updatedEvent = await prisma.event.update({
       where: { id },
       data: {
-        titleEn: data.titleEn || event.titleEn,
-        titleHi: data.titleHi || event.titleHi,
-        titleMr: data.titleMr || event.titleMr,
-        descriptionEn: data.descriptionEn || event.descriptionEn,
-        descriptionHi: data.descriptionHi || event.descriptionHi,
-        descriptionMr: data.descriptionMr || event.descriptionMr,
+        titleEn: data.title.en || event.title.en,
+        titleHi: data.title.hi || event.title.hi,
+        titleMr: data.title.mr || event.title.mr,
+        descriptionEn: data.description.en || event.description.en,
+        descriptionHi: data.description.hi || event.description.hi,
+        descriptionMr: data.description.mr || event.description.mr,
         eventDate: data.eventDate ? new Date(data.eventDate) : event.eventDate,
         eventTime: data.eventTime || event.eventTime,
       },
