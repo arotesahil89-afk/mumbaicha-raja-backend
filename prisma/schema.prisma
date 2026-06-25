@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -20,13 +20,13 @@ model Admin {
 }
 
 model Award {
-  id            String   @id @default(cuid())
-  language      String   // "en", "hi", "mr"
-  text          String   // Award text
-  heading       String   // Section heading
-  displayOrder  Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  language     String
+  text         String
+  heading      String
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@unique([language, text])
   @@index([language])
@@ -34,17 +34,17 @@ model Award {
 }
 
 model Event {
-  id              String   @id @default(cuid())
-  titleEn         String
-  titleHi         String
-  titleMr         String
-  descriptionEn   String   @db.Text
-  descriptionHi   String   @db.Text
-  descriptionMr   String   @db.Text
-  eventDate       DateTime
-  eventTime       String   // "8:00 AM" format
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String   @id @default(cuid())
+  titleEn       String
+  titleHi       String
+  titleMr       String
+  descriptionEn String   @db.Text
+  descriptionHi String   @db.Text
+  descriptionMr String   @db.Text
+  eventDate     DateTime
+  eventTime     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([eventDate])
   @@map("events")
@@ -52,10 +52,10 @@ model Event {
 
 model AuditLog {
   id        String   @id @default(cuid())
-  action    String   // "CREATE", "UPDATE", "DELETE"
-  entity    String   // "award", "event", "admin"
+  action    String
+  entity    String
   entityId  String
-  changes   Json     // What was changed
+  changes   Json
   adminId   String
   createdAt DateTime @default(now())
 
@@ -63,3 +63,4 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_logs")
 }
+
