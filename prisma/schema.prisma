@@ -2,9 +2,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-
-
-
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
@@ -68,3 +65,47 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+model MerchandiseProduct {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  price       Int
+  oldPrice    Int?
+  sizes       Json
+  stock       Json
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orders MerchandiseOrder[]
+
+  @@map("merchandise_products")
+}
+
+model MerchandiseOrder {
+  id              String    @id @default(cuid())
+  orderNo         String    @unique
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  productName     String
+  productId       String?
+  size            String
+  quantity        Int
+  unitPrice       Int
+  totalAmount     Int
+  paymentMethod   String    @default("online")
+  paymentId       String?
+  status          String    @default("pending")
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  product MerchandiseProduct? @relation(fields: [productId], references: [id])
+
+  @@index([status])
+  @@index([customerEmail])
+  @@index([customerPhone])
+  @@index([createdAt])
+  @@map("merchandise_orders")
+}

@@ -27,4 +27,11 @@ router.post(
   authController.logout
 );
 
+// POST /api/auth/change-password
+router.post(
+  '/change-password',
+  authMiddleware,
+  authController.changePassword
+);
+
 export default router;

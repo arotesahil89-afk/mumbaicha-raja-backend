@@ -10,6 +10,7 @@ dotenv.config();
 import authRoutes from './routes/auth.js';
 import awardsRoutes from './routes/awards.js';
 import eventsRoutes from './routes/events.js';
+import ordersRoutes from './routes/orders.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -18,18 +19,21 @@ const app = express();
 
 // Security middleware
 app.use(helmet());
-app.use(cors
-  ({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "https://nexbuild-xaee.onrender.com"
+app.use(cors({
+  origin: [
+    // Local development
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    // Production (keep if needed)
+    "https://nexbuild-xaee.onrender.com",
   ],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-);
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -44,6 +48,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/awards', awardsRoutes);
 app.use('/api/events', eventsRoutes);
+app.use('/api/orders', ordersRoutes);
 
 // 404 handler
 app.use((req, res) => {
