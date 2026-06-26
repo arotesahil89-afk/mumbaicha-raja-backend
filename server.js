@@ -1,34 +1,38 @@
 import app from './src/app.js';
-import { PrismaClient } from '@prisma/client';
+import sequelize from './src/config/db.js';
 
-const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
 
-// Start server
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📧 Admin Login: POST ${PORT}/api/auth/login`);
-  console.log(`🏆 Awards API: GET/POST/PUT/DELETE ${PORT}/api/awards`);
-  console.log(`📅 Events API: GET/POST/PUT/DELETE ${PORT}/api/events`);
-});
+// Test DB connection and start server
+async function startServer() {
+  try {
+    await sequelize.authenticate();
+    console.log('✓ Database connection has been established successfully.');
+    
+    const server = app.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
+      console.log(`📧 Admin Login: POST http://localhost:${PORT}/api/auth/login`);
+      console.log(`🏆 Awards API: GET/POST/PUT/DELETE http://localhost:${PORT}/api/awards`);
+      console.log(`📅 Events API: GET/POST/PUT/DELETE http://localhost:${PORT}/api/events`);
+    });
 
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM signal received: closing HTTP server');
-  server.close(async () => {
-    console.log('HTTP server closed');
-    await prisma.$disconnect();
-    process.exit(0);
-  });
-});
+    const shutdown = async (signal) => {
+      console.log(`${signal} signal received: closing HTTP server`);
+      server.close(async () => {
+        console.log('HTTP server closed');
+        await sequelize.close();
+        console.log('Database connection closed');
+        process.exit(0);
+      });
+    };
 
-process.on('SIGINT', async () => {
-  console.log('SIGINT signal received: closing HTTP server');
-  server.close(async () => {
-    console.log('HTTP server closed');
-    await prisma.$disconnect();
-    process.exit(0);
-  });
-});
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
+  } catch (error) {
+    console.error('Unable to connect to the database:', error);
+    process.exit(1);
+  }
+}
 
-export default server;
+startServer();
+

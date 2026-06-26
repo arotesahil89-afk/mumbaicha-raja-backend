@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { Op } from 'sequelize';
+import MerchandiseOrder from '../models/MerchandiseOrder.js';
+import AuditLog from '../models/AuditLog.js';
 import { AppError } from '../middleware/errorHandler.js';
-
-const prisma = new PrismaClient();
 
 // Generate unique order number: MCR-YYYYMMDD-NNN
 async function generateOrderNo() {
@@ -15,8 +15,13 @@ async function generateOrderNo() {
   const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const endOfDay   = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
 
-  const count = await prisma.merchandiseOrder.count({
-    where: { createdAt: { gte: startOfDay, lt: endOfDay } },
+  const count = await MerchandiseOrder.count({
+    where: {
+      createdAt: {
+        [Op.gte]: startOfDay,
+        [Op.lt]: endOfDay,
+      },
+    },
   });
 
   const seq = String(count + 1).padStart(3, '0');
@@ -28,25 +33,23 @@ export const ordersService = {
   async create(data) {
     const orderNo = await generateOrderNo();
 
-    const order = await prisma.merchandiseOrder.create({
-      data: {
-        orderNo,
-        customerName:  data.customerName,
-        customerEmail: data.customerEmail,
-        customerPhone: data.customerPhone,
-        productName:   data.productName,
-        productId:     data.productId   || null,
-        size:          data.size,
-        quantity:      Number(data.quantity),
-        unitPrice:     Number(data.unitPrice),
-        totalAmount:   Number(data.totalAmount),
-        paymentMethod: data.paymentMethod || 'online',
-        paymentId:     data.paymentId    || null,
-        status:        data.paymentMethod === 'pickup' ? 'pending' : 'confirmed',
-      },
+    const order = await MerchandiseOrder.create({
+      orderNo,
+      customerName:  data.customerName,
+      customerEmail: data.customerEmail,
+      customerPhone: data.customerPhone,
+      productName:   data.productName,
+      productId:     data.productId   || null,
+      size:          data.size,
+      quantity:      Number(data.quantity),
+      unitPrice:     Number(data.unitPrice),
+      totalAmount:   Number(data.totalAmount),
+      paymentMethod: data.paymentMethod || 'online',
+      paymentId:     data.paymentId    || null,
+      status:        data.paymentMethod === 'pickup' ? 'pending' : 'confirmed',
     });
 
-    return order;
+    return order.toJSON();
   },
 
   // ─── Get all orders (admin) with optional filters ──────────────────────
@@ -58,26 +61,26 @@ export const ordersService = {
     }
 
     if (search) {
-      where.OR = [
-        { customerName:  { contains: search } },
-        { customerEmail: { contains: search } },
-        { customerPhone: { contains: search } },
-        { orderNo:       { contains: search } },
+      where[Op.or] = [
+        { customerName:  { [Op.like]: `%${search}%` } },
+        { customerEmail: { [Op.like]: `%${search}%` } },
+        { customerPhone: { [Op.like]: `%${search}%` } },
+        { orderNo:       { [Op.like]: `%${search}%` } },
       ];
     }
 
     const skip  = (page - 1) * limit;
-    const total = await prisma.merchandiseOrder.count({ where });
+    const total = await MerchandiseOrder.count({ where });
 
-    const orders = await prisma.merchandiseOrder.findMany({
+    const orders = await MerchandiseOrder.findAll({
       where,
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take: Number(limit),
+      order: [['createdAt', 'DESC']],
+      offset: Number(skip),
+      limit: Number(limit),
     });
 
     return {
-      orders,
+      orders: orders.map(o => o.toJSON()),
       total,
       page: Number(page),
       totalPages: Math.ceil(total / limit),
@@ -86,29 +89,32 @@ export const ordersService = {
 
   // ─── Get order stats (admin) ─────────────────────────────────────────────
   async getStats() {
-    const [total, pending, pickedup, revenueAggregate] = await Promise.all([
-      prisma.merchandiseOrder.count(),
-      prisma.merchandiseOrder.count({ where: { status: 'pending' } }),
-      prisma.merchandiseOrder.count({ where: { status: 'picked_up' } }),
-      prisma.merchandiseOrder.aggregate({
-        where: { NOT: { status: 'cancelled' } },
-        _sum: { totalAmount: true }
-      })
+    const [total, pending, pickedup, revenue] = await Promise.all([
+      MerchandiseOrder.count(),
+      MerchandiseOrder.count({ where: { status: 'pending' } }),
+      MerchandiseOrder.count({ where: { status: 'picked_up' } }),
+      MerchandiseOrder.sum('totalAmount', {
+        where: {
+          status: {
+            [Op.ne]: 'cancelled',
+          },
+        },
+      }),
     ]);
 
     return {
       total,
       pending,
       pickedup,
-      revenue: revenueAggregate._sum.totalAmount || 0
+      revenue: revenue || 0,
     };
   },
 
   // ─── Get single order (admin) ───────────────────────────────────────────
   async getById(id) {
-    const order = await prisma.merchandiseOrder.findUnique({ where: { id } });
+    const order = await MerchandiseOrder.findByPk(id);
     if (!order) throw new AppError('Order not found', 404);
-    return order;
+    return order.toJSON();
   },
 
   // ─── Update status (admin) ──────────────────────────────────────────────
@@ -118,28 +124,30 @@ export const ordersService = {
       throw new AppError(`Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`, 400);
     }
 
-    const existing = await prisma.merchandiseOrder.findUnique({ where: { id } });
+    const existing = await MerchandiseOrder.findByPk(id);
     if (!existing) throw new AppError('Order not found', 404);
 
-    const updated = await prisma.merchandiseOrder.update({
+    const beforeState = existing.toJSON();
+
+    await MerchandiseOrder.update({
+      status,
+      ...(notes !== undefined ? { notes } : {}),
+    }, {
       where: { id },
-      data: {
-        status,
-        ...(notes !== undefined ? { notes } : {}),
-      },
     });
+
+    const updated = await MerchandiseOrder.findByPk(id);
+    const afterState = updated.toJSON();
 
     // Audit log
-    await prisma.auditLog.create({
-      data: {
-        action:   'UPDATE_STATUS',
-        entity:   'merchandise_order',
-        entityId: id,
-        changes:  { before: { status: existing.status }, after: { status } },
-        adminId:  adminId || 'system',
-      },
+    await AuditLog.create({
+      action:   'UPDATE_STATUS',
+      entity:   'merchandise_order',
+      entityId: id,
+      changes:  { before: { status: beforeState.status }, after: { status } },
+      adminId:  adminId || 'system',
     });
 
-    return updated;
+    return afterState;
   },
 };

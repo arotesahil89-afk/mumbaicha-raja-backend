@@ -1,106 +1,100 @@
-import { PrismaClient } from '@prisma/client';
+import Award from '../models/Award.js';
+import AuditLog from '../models/AuditLog.js';
 import { groupAwardsByLanguage } from '../utils/helpers.js';
 import { AppError } from '../middleware/errorHandler.js';
 
-const prisma = new PrismaClient();
-
 export const awardsService = {
   async getAll() {
-    const awards = await prisma.award.findMany({
-      orderBy: { displayOrder: 'asc' },
+    const awards = await Award.findAll({
+      order: [['displayOrder', 'ASC']],
     });
 
-    return groupAwardsByLanguage(awards);
+    const plainAwards = awards.map(a => a.toJSON());
+    return groupAwardsByLanguage(plainAwards);
   },
 
   async getById(id) {
-    const award = await prisma.award.findUnique({
-      where: { id },
-    });
+    const award = await Award.findByPk(id);
 
     if (!award) {
       throw new AppError('Award not found', 404);
     }
 
-    return award;
+    return award.toJSON();
   },
 
   async create(data) {
-    const award = await prisma.award.create({
-      data: {
-        language: data.language,
-        text: data.text,
-        heading: data.heading,
-        displayOrder: data.displayOrder || 0,
-      },
+    const award = await Award.create({
+      language: data.language,
+      text: data.text,
+      heading: data.heading,
+      displayOrder: data.displayOrder || 0,
     });
 
-    await prisma.auditLog.create({
-      data: {
-        action: 'CREATE',
-        entity: 'award',
-        entityId: award.id,
-        changes: award,
-        adminId: data.adminId,
-      },
+    const plainAward = award.toJSON();
+
+    await AuditLog.create({
+      action: 'CREATE',
+      entity: 'award',
+      entityId: plainAward.id,
+      changes: plainAward,
+      adminId: data.adminId,
     });
 
-    return award;
+    return plainAward;
   },
 
   async update(id, data, adminId) {
-    const award = await prisma.award.findUnique({
-      where: { id },
-    });
+    const award = await Award.findByPk(id);
 
     if (!award) {
       throw new AppError('Award not found', 404);
     }
 
-    const updatedAward = await prisma.award.update({
+    const beforeState = award.toJSON();
+
+    await Award.update({
+      language: data.language || award.language,
+      text: data.text || award.text,
+      heading: data.heading || award.heading,
+      displayOrder: data.displayOrder !== undefined ? data.displayOrder : award.displayOrder,
+    }, {
       where: { id },
-      data: {
-        language: data.language || award.language,
-        text: data.text || award.text,
-        heading: data.heading || award.heading,
-        displayOrder: data.displayOrder !== undefined ? data.displayOrder : award.displayOrder,
-      },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        action: 'UPDATE',
-        entity: 'award',
-        entityId: id,
-        changes: { before: award, after: updatedAward },
-        adminId,
-      },
+    const updatedAward = await Award.findByPk(id);
+    const afterState = updatedAward.toJSON();
+
+    await AuditLog.create({
+      action: 'UPDATE',
+      entity: 'award',
+      entityId: id,
+      changes: { before: beforeState, after: afterState },
+      adminId,
     });
 
-    return updatedAward;
+    return afterState;
   },
 
   async delete(id, adminId) {
-    const award = await prisma.award.findUnique({
-      where: { id },
-    });
+    const award = await Award.findByPk(id);
 
     if (!award) {
       throw new AppError('Award not found', 404);
     }
 
-    await prisma.award.delete({
+    const beforeState = award.toJSON();
+
+    await Award.destroy({
       where: { id },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        action: 'DELETE',
-        entity: 'award',
-        entityId: id,
-        changes: award,
-        adminId,
-      },
+    await AuditLog.create({
+      action: 'DELETE',
+      entity: 'award',
+      entityId: id,
+      changes: beforeState,
+      adminId,
     });
 
     return { message: 'Award deleted successfully' };

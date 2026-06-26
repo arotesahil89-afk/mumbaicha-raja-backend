@@ -1,12 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+import Admin from '../models/Admin.js';
 import { comparePassword, generateToken, hashPassword } from '../utils/helpers.js';
 import { AppError } from '../middleware/errorHandler.js';
 
-const prisma = new PrismaClient();
-
 export const authService = {
   async login(email, password) {
-    const admin = await prisma.admin.findUnique({
+    const admin = await Admin.findOne({
       where: { email },
     });
 
@@ -31,16 +29,15 @@ export const authService = {
   },
 
   async verify(adminId) {
-    const admin = await prisma.admin.findUnique({
-      where: { id: adminId },
-      select: { id: true, email: true, role: true, active: true },
+    const admin = await Admin.findByPk(adminId, {
+      attributes: ['id', 'email', 'role', 'active'],
     });
 
     if (!admin || !admin.active) {
       throw new AppError('Admin not found or inactive', 401);
     }
 
-    return admin;
+    return admin.toJSON(); // Return plain object matching prisma output
   },
 
   async logout() {
@@ -49,9 +46,7 @@ export const authService = {
   },
 
   async changePassword(adminId, oldPassword, newPassword) {
-    const admin = await prisma.admin.findUnique({
-      where: { id: adminId },
-    });
+    const admin = await Admin.findByPk(adminId);
 
     if (!admin) {
       throw new AppError('Admin not found', 404);
@@ -63,10 +58,10 @@ export const authService = {
     }
 
     const hashedPassword = await hashPassword(newPassword);
-    await prisma.admin.update({
-      where: { id: adminId },
-      data: { password: hashedPassword },
-    });
+    await Admin.update(
+      { password: hashedPassword },
+      { where: { id: adminId } }
+    );
 
     return { message: 'Password changed successfully' };
   },

@@ -1,35 +1,32 @@
-import { PrismaClient } from '@prisma/client';
+import Event from '../models/Event.js';
+import AuditLog from '../models/AuditLog.js';
 import { groupEventsByLanguage } from '../utils/helpers.js';
 import { AppError } from '../middleware/errorHandler.js';
 
-const prisma = new PrismaClient();
-
 export const eventsService = {
   async getAll() {
-    const events = await prisma.event.findMany({
-      orderBy: { eventDate: 'asc' },
+    const events = await Event.findAll({
+      order: [['eventDate', 'ASC']],
     });
 
-    return groupEventsByLanguage(events);
+    const plainEvents = events.map(e => e.toJSON());
+    return groupEventsByLanguage(plainEvents);
   },
 
   async getById(id) {
-    const event = await prisma.event.findUnique({
-      where: { id },
-    });
+    const event = await Event.findByPk(id);
 
     if (!event) {
       throw new AppError('Event not found', 404);
     }
 
-    return groupEventsByLanguage([event])[0];
+    return groupEventsByLanguage([event.toJSON()])[0];
   },
 
   async create(data) {
-  console.log("EVENT DATA RECEIVED:", JSON.stringify(data, null, 2));
+    console.log("EVENT DATA RECEIVED:", JSON.stringify(data, null, 2));
 
-  const event = await prisma.event.create({
-    data: {
+    const event = await Event.create({
       titleEn: data.title?.en,
       titleHi: data.title?.hi,
       titleMr: data.title?.mr,
@@ -40,80 +37,76 @@ export const eventsService = {
 
       eventDate: new Date(data.date),
       eventTime: data.time,
-    },
-  });
-
-
-    await prisma.auditLog.create({
-      data: {
-        action: 'CREATE',
-        entity: 'event',
-        entityId: event.id,
-        changes: event,
-        adminId: data.adminId,
-      },
     });
 
-    return groupEventsByLanguage([event])[0];
+    const plainEvent = event.toJSON();
+
+    await AuditLog.create({
+      action: 'CREATE',
+      entity: 'event',
+      entityId: plainEvent.id,
+      changes: plainEvent,
+      adminId: data.adminId,
+    });
+
+    return groupEventsByLanguage([plainEvent])[0];
   },
 
   async update(id, data, adminId) {
-    const event = await prisma.event.findUnique({
-      where: { id },
-    });
+    const event = await Event.findByPk(id);
 
     if (!event) {
       throw new AppError('Event not found', 404);
     }
 
-    const updatedEvent = await prisma.event.update({
+    const beforeState = event.toJSON();
+
+    await Event.update({
+      titleEn: data.title?.en || event.titleEn,
+      titleHi: data.title?.hi || event.titleHi,
+      titleMr: data.title?.mr || event.titleMr,
+      descriptionEn: data.description?.en || event.descriptionEn,
+      descriptionHi: data.description?.hi || event.descriptionHi,
+      descriptionMr: data.description?.mr || event.descriptionMr,
+      eventDate: (data.date || data.eventDate) ? new Date(data.date || data.eventDate) : event.eventDate,
+      eventTime: data.time || data.eventTime || event.eventTime,
+    }, {
       where: { id },
-      data: {
-        titleEn: data.title.en || event.title.en,
-        titleHi: data.title.hi || event.title.hi,
-        titleMr: data.title.mr || event.title.mr,
-        descriptionEn: data.description.en || event.description.en,
-        descriptionHi: data.description.hi || event.description.hi,
-        descriptionMr: data.description.mr || event.description.mr,
-        eventDate: data.eventDate ? new Date(data.eventDate) : event.eventDate,
-        eventTime: data.eventTime || event.eventTime,
-      },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        action: 'UPDATE',
-        entity: 'event',
-        entityId: id,
-        changes: { before: event, after: updatedEvent },
-        adminId,
-      },
+    const updatedEvent = await Event.findByPk(id);
+    const afterState = updatedEvent.toJSON();
+
+    await AuditLog.create({
+      action: 'UPDATE',
+      entity: 'event',
+      entityId: id,
+      changes: { before: beforeState, after: afterState },
+      adminId,
     });
 
-    return groupEventsByLanguage([updatedEvent])[0];
+    return groupEventsByLanguage([afterState])[0];
   },
 
   async delete(id, adminId) {
-    const event = await prisma.event.findUnique({
-      where: { id },
-    });
+    const event = await Event.findByPk(id);
 
     if (!event) {
       throw new AppError('Event not found', 404);
     }
 
-    await prisma.event.delete({
+    const beforeState = event.toJSON();
+
+    await Event.destroy({
       where: { id },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        action: 'DELETE',
-        entity: 'event',
-        entityId: id,
-        changes: event,
-        adminId,
-      },
+    await AuditLog.create({
+      action: 'DELETE',
+      entity: 'event',
+      entityId: id,
+      changes: beforeState,
+      adminId,
     });
 
     return { message: 'Event deleted successfully' };
