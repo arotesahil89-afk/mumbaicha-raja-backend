@@ -1,4 +1,5 @@
 import { shippingService } from '../services/shipping/shippingService.js';
+import { mockProvider } from '../services/shipping/providers/mockProvider.js';
 import MerchandiseOrder from '../models/MerchandiseOrder.js';
 import PincodeMaster from '../models/PincodeMaster.js';
 import path from 'path';
@@ -137,8 +138,41 @@ export const shippingController = {
       const { awb } = req.params;
       const filePath = path.resolve('shipping_docs', `label_${awb}.pdf`);
       
+      // Self-healing: if file does not exist, look up order and re-generate on the fly
       if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ success: false, error: 'Label PDF not found' });
+        const orders = await MerchandiseOrder.findAll();
+        const order = orders.find(o => o.shipping && o.shipping.awb === awb);
+        
+        if (order) {
+          const docsDir = path.resolve('shipping_docs');
+          if (!fs.existsSync(docsDir)) {
+            fs.mkdirSync(docsDir, { recursive: true });
+          }
+
+          const city = order.shipping.destination || order.shipping.city || 'Mumbai';
+          const weight = order.shipping.weight || (order.quantity * 0.2);
+          
+          const payload = {
+            orderNo: order.orderNo,
+            customerName: order.customerName,
+            customerPhone: order.customerPhone,
+            address: order.address,
+            productName: order.productName,
+            quantity: order.quantity,
+            size: order.size
+          };
+
+          await mockProvider.generateLabelPDF(
+            filePath,
+            awb,
+            order.shipping.shipmentId || 'SHP_TEMP',
+            payload,
+            city,
+            weight
+          );
+        } else {
+          return res.status(404).json({ success: false, error: 'Label PDF not found' });
+        }
       }
 
       res.setHeader('Content-Type', 'application/pdf');
@@ -152,11 +186,45 @@ export const shippingController = {
   // GET /api/shipping/manifest/:id
   async manifest(req, res, next) {
     try {
-      const { id } = req.params;
+      const { id } = req.params; // shipmentId
       const filePath = path.resolve('shipping_docs', `manifest_${id}.pdf`);
       
+      // Self-healing: if file does not exist, look up order and re-generate on the fly
       if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ success: false, error: 'Manifest PDF not found' });
+        const orders = await MerchandiseOrder.findAll();
+        const order = orders.find(o => o.shipping && o.shipping.shipmentId === id);
+
+        if (order) {
+          const docsDir = path.resolve('shipping_docs');
+          if (!fs.existsSync(docsDir)) {
+            fs.mkdirSync(docsDir, { recursive: true });
+          }
+
+          const city = order.shipping.destination || order.shipping.city || 'Mumbai';
+          const weight = order.shipping.weight || (order.quantity * 0.2);
+          const manifestId = order.shipping.manifestId || 'MNF_' + Math.floor(10000000 + Math.random() * 90000000).toString();
+
+          const payload = {
+            orderNo: order.orderNo,
+            customerName: order.customerName,
+            customerPhone: order.customerPhone,
+            address: order.address,
+            productName: order.productName,
+            quantity: order.quantity,
+            size: order.size
+          };
+
+          await mockProvider.generateManifestPDF(
+            filePath,
+            manifestId,
+            order.shipping.awb,
+            payload,
+            city,
+            weight
+          );
+        } else {
+          return res.status(404).json({ success: false, error: 'Manifest PDF not found' });
+        }
       }
 
       res.setHeader('Content-Type', 'application/pdf');
