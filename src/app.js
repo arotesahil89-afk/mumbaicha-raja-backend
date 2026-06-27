@@ -11,6 +11,12 @@ import authRoutes from './routes/auth.js';
 import awardsRoutes from './routes/awards.js';
 import eventsRoutes from './routes/events.js';
 import ordersRoutes from './routes/orders.js';
+import shippingRoutes from './routes/shipping.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -45,10 +51,12 @@ app.get('/api/health', (req, res) => {
 });
 
 // Routes
+app.use('/shipping_docs', express.static(path.join(__dirname, '../shipping_docs')));
 app.use('/api/auth', authRoutes);
 app.use('/api/awards', awardsRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/orders', ordersRoutes);
+app.use('/api/shipping', shippingRoutes);
 
 // 404 handler
 app.use((req, res) => {

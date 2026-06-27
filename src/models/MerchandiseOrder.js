@@ -68,6 +68,14 @@ const MerchandiseOrder = sequelize.define('MerchandiseOrder', {
     allowNull: false,
     defaultValue: 'pending',
   },
+  address: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  shipping: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
   notes: {
     type: DataTypes.TEXT,
     allowNull: true,

@@ -98,6 +98,9 @@ export const createOrderSchema = Joi.object({
   totalAmount:   Joi.number().positive().required(),
   paymentMethod: Joi.string().valid('online', 'pickup', 'card', 'upi', 'cod').required(),
   paymentId:     Joi.string().optional().allow(null, ''),
+  address:       Joi.string().optional().allow(null, ''),
+  pincode:       Joi.string().optional().allow(null, ''),
+  shippingCharge:Joi.number().optional().allow(null, 0),
 });
 
 export const updateOrderStatusSchema = Joi.object({
