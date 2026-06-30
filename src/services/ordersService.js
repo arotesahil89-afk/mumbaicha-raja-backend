@@ -68,9 +68,11 @@ export const ordersService = {
       estDelivery = pinRecord.estimatedDelivery;
     }
 
-    // Force recalculate totalAmount from unitPrice, quantity and master delivery charge
+    // Force recalculate totalAmount from unitPrice, quantity, master delivery charge and convenience fee
     const subtotal = Number(data.quantity) * Number(data.unitPrice);
-    const totalAmount = subtotal + deliveryCharge;
+    const baseTotal = subtotal + deliveryCharge;
+    const fee = data.paymentMethod === 'pickup' ? 19 : Math.round(baseTotal * 0.02);
+    const totalAmount = baseTotal + fee;
 
     const order = await MerchandiseOrder.create({
       orderNo,
