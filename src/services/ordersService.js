@@ -41,7 +41,8 @@ const totalAmount = subtotal;
       customerName:  data.customerName,
       customerEmail: data.customerEmail,
       customerPhone: data.customerPhone,
-      address:       null,
+      address:       data.address || null,
+      pincode:       data.pincode || null,
       productName:   data.productName,
       productId:     data.productId   || null,
       size:          data.size,
@@ -50,7 +51,7 @@ const totalAmount = subtotal;
       totalAmount:   totalAmount,
       paymentMethod: data.paymentMethod || 'online',
       paymentId:     data.paymentId    || null,
-      status:        data.paymentMethod === 'pickup' ? 'pending' : 'confirmed',
+      status:        'confirmed',
     });
 
     const updated = await MerchandiseOrder.findByPk(order.id);
