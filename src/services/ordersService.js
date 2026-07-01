@@ -3,10 +3,6 @@ import MerchandiseOrder from '../models/MerchandiseOrder.js';
 import AuditLog from '../models/AuditLog.js';
 import { AppError } from '../middleware/errorHandler.js';
 
-import { shippingService } from './shipping/shippingService.js';
-
-import PincodeMaster from '../models/PincodeMaster.js';
-
 // Generate unique order number: MCR-YYYYMMDD-NNN
 async function generateOrderNo() {
   const today = new Date();
@@ -37,90 +33,25 @@ export const ordersService = {
   async create(data) {
     const orderNo = await generateOrderNo();
 
-    let deliveryCharge = 0;
-    let city = '';
-    let state = '';
-    let estDelivery = '';
-    let pincode = data.pincode || '';
-
-    // If it's an online shipment, fetch delivery pricing from backend master
-    if (data.paymentMethod !== 'pickup') {
-      if (!pincode && data.address) {
-        const pinMatch = data.address.match(/\b\d{6}\b/);
-        pincode = pinMatch ? pinMatch[0] : '';
-      }
-
-      if (!pincode) {
-        throw new AppError('Delivery pincode is required for online shipments', 400);
-      }
-
-      const pinRecord = await PincodeMaster.findOne({
-        where: { pincode, active: true }
-      });
-
-      if (!pinRecord) {
-        throw new AppError('Delivery is not available for this pincode location', 400);
-      }
-
-      deliveryCharge = pinRecord.deliveryCharge;
-      city = pinRecord.city;
-      state = pinRecord.state;
-      estDelivery = pinRecord.estimatedDelivery;
-    }
-
-    // Force recalculate totalAmount from unitPrice, quantity and master delivery charge
     const subtotal = Number(data.quantity) * Number(data.unitPrice);
-    const totalAmount = subtotal + deliveryCharge;
+    const totalAmount = subtotal;
 
     const order = await MerchandiseOrder.create({
       orderNo,
       customerName:  data.customerName,
       customerEmail: data.customerEmail,
       customerPhone: data.customerPhone,
-      address:       data.address || null,
+      address:       null,
       productName:   data.productName,
       productId:     data.productId   || null,
       size:          data.size,
       quantity:      Number(data.quantity),
       unitPrice:     Number(data.unitPrice),
-      totalAmount:   totalAmount, // Backend-computed total amount
+      totalAmount:   totalAmount,
       paymentMethod: data.paymentMethod || 'online',
       paymentId:     data.paymentId    || null,
       status:        data.paymentMethod === 'pickup' ? 'pending' : 'confirmed',
     });
-
-    // Auto-create shipment for online/card/upi payments
-    if (order.paymentMethod !== 'pickup' && order.address) {
-      try {
-        const shipment = await shippingService.createShipment({
-          orderId: order.id,
-          orderNo: order.orderNo,
-          customerName: order.customerName,
-          customerPhone: order.customerPhone,
-          address: order.address,
-          productName: order.productName,
-          quantity: order.quantity,
-          size: order.size,
-          weight: order.quantity * 0.2
-        });
-
-        // Merge backend pincode master details
-        const finalShipping = {
-          ...shipment,
-          pincode,
-          city,
-          state,
-          deliveryCharge,
-          estimatedDeliveryText: estDelivery
-        };
-
-        await order.update({
-          shipping: finalShipping
-        });
-      } catch (err) {
-        console.error('Failed to auto-create shipment:', err);
-      }
-    }
 
     const updated = await MerchandiseOrder.findByPk(order.id);
     return updated.toJSON();
