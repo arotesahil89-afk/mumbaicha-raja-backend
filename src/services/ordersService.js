@@ -33,8 +33,8 @@ export const ordersService = {
   async create(data) {
     const orderNo = await generateOrderNo();
 
-    const subtotal = Number(data.quantity) * Number(data.unitPrice);
-    const totalAmount = subtotal;
+const subtotal = Number(data.quantity) * Number(data.unitPrice);
+const totalAmount = subtotal;
 
     const order = await MerchandiseOrder.create({
       orderNo,
