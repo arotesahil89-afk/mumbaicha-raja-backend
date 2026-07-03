@@ -101,6 +101,7 @@ export const createOrderSchema = Joi.object({
   address:       Joi.string().optional().allow(null, ''),
   pincode:       Joi.string().optional().allow(null, ''),
   shippingCharge:Joi.number().optional().allow(null, 0),
+  deliveryMethod:Joi.string().valid('pickup', 'home').optional().default('pickup'),
 });
 
 export const updateOrderStatusSchema = Joi.object({

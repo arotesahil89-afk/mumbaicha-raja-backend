@@ -43,6 +43,7 @@ const totalAmount = subtotal;
       customerPhone: data.customerPhone,
       address:       data.address || null,
       pincode:       data.pincode || null,
+      deliveryMethod: data.deliveryMethod || 'pickup',
       productName:   data.productName,
       productId:     data.productId   || null,
       size:          data.size,
