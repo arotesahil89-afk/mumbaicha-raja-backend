@@ -11,6 +11,7 @@ import authRoutes from './routes/auth.js';
 import awardsRoutes from './routes/awards.js';
 import eventsRoutes from './routes/events.js';
 import ordersRoutes from './routes/orders.js';
+import merchandiseRoutes from './routes/merchandise.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -54,6 +55,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/awards', awardsRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/orders', ordersRoutes);
+app.use('/api/merchandise', merchandiseRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -9,11 +9,15 @@ const MerchandiseProduct = sequelize.define('MerchandiseProduct', {
     defaultValue: () => crypto.randomUUID(),
   },
   name: {
-    type: DataTypes.STRING(191),
+    type: DataTypes.JSON, // Support multilingual name object
     allowNull: false,
   },
+  tagline: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
   description: {
-    type: DataTypes.TEXT,
+    type: DataTypes.JSON, // Support multilingual description object
     allowNull: true,
   },
   price: {
@@ -32,6 +36,44 @@ const MerchandiseProduct = sequelize.define('MerchandiseProduct', {
     type: DataTypes.JSON,
     allowNull: false,
   },
+  type: {
+    type: DataTypes.STRING(191),
+    allowNull: true,
+  },
+  color: {
+    type: DataTypes.STRING(191),
+    allowNull: true,
+  },
+  colorName: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
+  image: {
+    type: DataTypes.TEXT, // Store base64 data or image url
+    allowNull: true,
+  },
+  gallery: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
+  rating: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+    defaultValue: 4.8,
+  },
+  reviews: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 0,
+  },
+  highlights: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
+  specs: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
   active: {
     type: DataTypes.BOOLEAN,
     allowNull: false,
@@ -40,6 +82,8 @@ const MerchandiseProduct = sequelize.define('MerchandiseProduct', {
 }, {
   tableName: 'merchandise_products',
   timestamps: true,
+  charset: 'utf8mb4',
+  collate: 'utf8mb4_unicode_ci'
 });
 
 export default MerchandiseProduct;
