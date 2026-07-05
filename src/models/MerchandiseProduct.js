@@ -9,11 +9,19 @@ const MerchandiseProduct = sequelize.define('MerchandiseProduct', {
     defaultValue: () => crypto.randomUUID(),
   },
   name: {
-    type: DataTypes.STRING(191),
+    type: DataTypes.JSON,
     allowNull: false,
   },
+  tagline: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
   description: {
-    type: DataTypes.TEXT,
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
+  type: {
+    type: DataTypes.STRING(191),
     allowNull: true,
   },
   price: {
@@ -31,6 +39,40 @@ const MerchandiseProduct = sequelize.define('MerchandiseProduct', {
   stock: {
     type: DataTypes.JSON,
     allowNull: false,
+  },
+  color: {
+    type: DataTypes.STRING(191),
+    allowNull: true,
+  },
+  colorName: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
+  image: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  gallery: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
+  rating: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+    defaultValue: 4.8,
+  },
+  reviews: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 1,
+  },
+  highlights: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
+  specs: {
+    type: DataTypes.JSON,
+    allowNull: true,
   },
   active: {
     type: DataTypes.BOOLEAN,

@@ -63,6 +63,11 @@ const MerchandiseOrder = sequelize.define('MerchandiseOrder', {
     type: DataTypes.STRING(191),
     allowNull: true,
   },
+  deliveryMethod: {
+    type: DataTypes.STRING(191),
+    allowNull: false,
+    defaultValue: 'pickup',
+  },
   status: {
     type: DataTypes.STRING(191),
     allowNull: false,
@@ -78,6 +83,14 @@ const MerchandiseOrder = sequelize.define('MerchandiseOrder', {
   },
   notes: {
     type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  items: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
+  otpCode: {
+    type: DataTypes.STRING(6),
     allowNull: true,
   },
 }, {
