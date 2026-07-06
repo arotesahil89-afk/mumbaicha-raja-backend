@@ -5,7 +5,7 @@ import { AppError } from '../middleware/errorHandler.js';
 
 import { shippingService } from './shipping/shippingService.js';
 
-import PincodeMaster from '../models/PincodeMaster.js';
+
 
 // Generate unique order number: MCR-YYYYMMDD-NNN
 async function generateOrderNo() {
@@ -54,32 +54,9 @@ export const ordersService = {
     let estDelivery = '';
     let pincode = data.pincode || '';
 
-    // If it's an online shipment, fetch delivery pricing from backend master
+    // Since PincodeMaster is removed, we default delivery charges
     if (data.paymentMethod !== 'pickup') {
-      if (!pincode && data.address) {
-        const pinMatch = data.address.match(/\b\d{6}\b/);
-        pincode = pinMatch ? pinMatch[0] : '';
-      }
-
-      if (!pincode) {
-        throw new AppError('Delivery pincode is required for online shipments', 400);
-      }
-
-      const pinRecord = await PincodeMaster.findOne({
-        where: { pincode, active: true }
-      });
-
-      if (pinRecord) {
-        deliveryCharge = pinRecord.deliveryCharge;
-        city = pinRecord.city;
-        state = pinRecord.state;
-        estDelivery = pinRecord.estimatedDelivery;
-      } else {
-        deliveryCharge = 0;
-        city = '';
-        state = '';
-        estDelivery = '';
-      }
+      deliveryCharge = data.deliveryCharge || 0;
     }
 
     // Force recalculate totalAmount from unitPrice, quantity and master delivery charge

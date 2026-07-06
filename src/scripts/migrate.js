@@ -45,6 +45,7 @@ async function migrate() {
     console.log('   • events');
     console.log('   • audit_logs');
     console.log('   • merchandise_products');
+    console.log('   • pincode_masters');
     console.log('   • merchandise_orders');
 
     process.exit(0);
