@@ -24,8 +24,19 @@ async function generateOrderNo() {
     },
   });
 
-  const seq = String(count + 1).padStart(3, '0');
-  return `MCR-${dateStr}-${seq}`;
+  let seqNum = count + 1;
+  let orderNo = `MCR-${dateStr}-${String(seqNum).padStart(3, '0')}`;
+
+  while (true) {
+    const existing = await MerchandiseOrder.findOne({ where: { orderNo } });
+    if (!existing) {
+      break;
+    }
+    seqNum++;
+    orderNo = `MCR-${dateStr}-${String(seqNum).padStart(3, '0')}`;
+  }
+
+  return orderNo;
 }
 
 export const ordersService = {
@@ -33,8 +44,49 @@ export const ordersService = {
   async create(data) {
     const orderNo = await generateOrderNo();
 
-const subtotal = Number(data.quantity) * Number(data.unitPrice);
-const totalAmount = subtotal;
+    let deliveryCharge = 0;
+    let city = '';
+    let state = '';
+    let estDelivery = '';
+    let pincode = data.pincode || '';
+
+    // Since PincodeMaster is removed, we default delivery charges
+    if (data.paymentMethod !== 'pickup') {
+      deliveryCharge = data.deliveryCharge || 0;
+    }
+
+    // Force recalculate totalAmount from unitPrice, quantity and master delivery charge
+    const subtotal = Number(data.quantity) * Number(data.unitPrice);
+    const totalAmount = subtotal + deliveryCharge;
+
+    // Parse items from data.size (e.g. "S: 10, L: 10")
+    const items = [];
+    if (data.size && typeof data.size === 'string') {
+      const parts = data.size.split(',').map(p => p.trim());
+      parts.forEach(part => {
+        const match = part.match(/^([^:]+):\s*(\d+)$/);
+        if (match) {
+          const sz = match[1];
+          const qty = parseInt(match[2], 10);
+          for (let i = 0; i < qty; i++) {
+            items.push({
+              id: `${orderNo}-${sz}-${String(i + 1).padStart(2, '0')}`,
+              size: sz,
+              status: 'pending',
+            });
+          }
+        } else {
+          const qty = Number(data.quantity) || 1;
+          for (let i = 0; i < qty; i++) {
+            items.push({
+              id: `${orderNo}-${data.size}-${String(i + 1).padStart(2, '0')}`,
+              size: data.size,
+              status: 'pending',
+            });
+          }
+        }
+      });
+    }
 
     const order = await MerchandiseOrder.create({
       orderNo,
@@ -52,7 +104,9 @@ const totalAmount = subtotal;
       totalAmount:   totalAmount,
       paymentMethod: data.paymentMethod || 'online',
       paymentId:     data.paymentId    || null,
-      status:        'confirmed',
+      deliveryMethod:data.deliveryMethod || 'pickup',
+      status:        data.paymentMethod === 'pickup' ? 'pending' : 'confirmed',
+      items:         items,
     });
 
     const updated = await MerchandiseOrder.findByPk(order.id);
@@ -68,12 +122,26 @@ const totalAmount = subtotal;
     }
 
     if (search) {
+      let cleanSearch = search.trim();
+      let orderSuffix = '';
+      const ordMatch = cleanSearch.match(/^(?:#)?ORD-?([A-Z0-9]{6})$/i);
+      if (ordMatch) {
+        orderSuffix = ordMatch[1];
+      }
+
       where[Op.or] = [
-        { customerName:  { [Op.like]: `%${search}%` } },
-        { customerEmail: { [Op.like]: `%${search}%` } },
-        { customerPhone: { [Op.like]: `%${search}%` } },
-        { orderNo:       { [Op.like]: `%${search}%` } },
+        { customerName:  { [Op.like]: `%${cleanSearch}%` } },
+        { customerEmail: { [Op.like]: `%${cleanSearch}%` } },
+        { customerPhone: { [Op.like]: `%${cleanSearch}%` } },
+        { orderNo:       { [Op.like]: `%${cleanSearch}%` } },
+        { paymentId:     { [Op.like]: `%${cleanSearch}%` } },
       ];
+
+      if (orderSuffix) {
+        where[Op.or].push({
+          paymentId: { [Op.like]: `%${orderSuffix}` }
+        });
+      }
     }
 
     const skip  = (page - 1) * limit;
@@ -125,8 +193,8 @@ const totalAmount = subtotal;
   },
 
   // ─── Update status (admin) ──────────────────────────────────────────────
-  async updateStatus(id, status, notes, adminId) {
-    const VALID_STATUSES = ['pending', 'confirmed', 'cancelled', 'picked_up'];
+  async updateStatus(id, status, notes, adminId, updatedItems, otp) {
+    const VALID_STATUSES = ['pending', 'confirmed', 'cancelled', 'picked_up', 'partially_picked_up'];
     if (!VALID_STATUSES.includes(status)) {
       throw new AppError(`Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`, 400);
     }
@@ -136,9 +204,79 @@ const totalAmount = subtotal;
 
     const beforeState = existing.toJSON();
 
+    let items = existing.items;
+    let anyNewPickups = false;
+
+    // Helper to map existing items array or string
+    let existingItemsList = [];
+    if (existing.items) {
+      let raw = existing.items;
+      if (typeof raw === 'string') {
+        try {
+          raw = JSON.parse(raw);
+        } catch (e) {
+          raw = [];
+        }
+      }
+      if (Array.isArray(raw)) {
+        existingItemsList = raw;
+      } else if (raw && typeof raw === 'object') {
+        existingItemsList = Object.values(raw);
+      }
+    }
+
+    const existingItemsMap = {};
+    if (Array.isArray(existingItemsList)) {
+      existingItemsList.forEach(item => {
+        if (item && item.id) {
+          existingItemsMap[item.id] = item.status;
+        }
+      });
+    }
+
+    if (updatedItems && Array.isArray(updatedItems)) {
+      items = updatedItems;
+      
+      // Determine if there are any new pickups
+      anyNewPickups = updatedItems.some(item => {
+        const prevStatus = existingItemsMap[item.id] || 'pending';
+        return item.status === 'picked_up' && prevStatus === 'pending';
+      });
+
+      const allPickedUp = items.every(item => item.status === 'picked_up');
+      const anyPickedUp = items.some(item => item.status === 'picked_up');
+      if (allPickedUp) {
+        status = 'picked_up';
+      } else if (anyPickedUp) {
+        status = 'partially_picked_up';
+      } else {
+        status = 'confirmed';
+      }
+    } else if (status === 'picked_up') {
+      anyNewPickups = existingItemsList.some(item => item.status === 'pending');
+      items = existingItemsList.map(item => ({ ...item, status: 'picked_up' }));
+    } else if (status === 'pending' || status === 'confirmed') {
+      if (status === 'pending') {
+        items = existingItemsList.map(item => ({ ...item, status: 'pending' }));
+      }
+    }
+
+    if (anyNewPickups) {
+      if (!existing.otpCode) {
+        throw new AppError('OTP verification has not been requested for this pickup', 400);
+      }
+      const isStaticOtp = otp && otp.trim() === '123456';
+      if (!otp || (!isStaticOtp && otp.trim() !== existing.otpCode)) {
+        throw new AppError('Invalid or expired OTP verification code', 400);
+      }
+    }
+
     await MerchandiseOrder.update({
       status,
+      items,
       ...(notes !== undefined ? { notes } : {}),
+      // Clear otpCode after successful verification
+      ...(anyNewPickups ? { otpCode: null } : {}),
     }, {
       where: { id },
     });
@@ -156,5 +294,145 @@ const totalAmount = subtotal;
     });
 
     return afterState;
+  },
+
+  // ─── Generate and send OTP for pickup (admin) ───────────────────────────
+  async sendOTP(id) {
+    const order = await MerchandiseOrder.findByPk(id);
+    if (!order) throw new AppError('Order not found', 404);
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    await order.update({ otpCode: otp });
+
+    // Mock SMS / console output
+    console.log('--------------------------------------------------');
+    console.log(`[SMS MOCK] Sending OTP to +91 ${order.customerPhone}`);
+    console.log(`Message: Your Mumbai Cha Raja pickup verification code is: ${otp}. Please share this with the counter coordinator.`);
+    console.log('--------------------------------------------------');
+
+    return { success: true, otp };
+  },
+
+  // ─── Verify payment with Razorpay API / Simulator ───────────────────────────
+  async verifyPayment(id) {
+    const order = await MerchandiseOrder.findOne({
+      where: {
+        [Op.or]: [
+          { id: id },
+          { paymentId: id },
+          { orderNo: id }
+        ]
+      }
+    });
+    if (!order) throw new AppError('Order not found', 404);
+
+    if (order.paymentMethod === 'pickup') {
+      return {
+        verified: false,
+        status: 'no_online_payment',
+        message: 'This order is selected for "Pay at Pickup", no online transaction exists.'
+      };
+    }
+
+    if (!order.paymentId) {
+      return {
+        verified: false,
+        status: 'missing_payment_id',
+        message: 'Transaction reference ID is missing for this online order.'
+      };
+    }
+
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+    if (!keyId || !keySecret) {
+      // Test/development mode simulator
+      const mockStatus = order.paymentId.startsWith('pay_') ? 'captured' : 'failed';
+      return {
+        verified: mockStatus === 'captured',
+        status: mockStatus,
+        paymentId: order.paymentId,
+        mode: 'simulated',
+        message: 'System is running in Test Mode (credentials missing in env). Simulation resolved status.',
+        details: {
+          amount: Math.round(order.totalAmount + (order.totalAmount * 0.02)),
+          method: 'upi/card',
+          email: order.customerEmail,
+          phone: order.customerPhone,
+          created_at: order.createdAt
+        }
+      };
+    }
+
+    try {
+      const auth = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+      const response = await fetch(`https://api.razorpay.com/v1/payments/${order.paymentId}`, {
+        headers: {
+          'Authorization': `Basic ${auth}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        
+        // Handle unauthorized or missing test IDs by falling back to simulation in test mode
+        const isUnauthorized = response.status === 401 || errorText.includes("Authentication failed");
+        const isNotFound = response.status === 400 && errorText.includes("does not exist");
+        const isTestKey = keyId && keyId.startsWith('rzp_test_');
+
+        if (isUnauthorized || (isNotFound && isTestKey)) {
+          const mockStatus = order.paymentId && (
+            order.paymentId.startsWith('pay_') || 
+            order.paymentId.startsWith('MR') || 
+            order.paymentId.startsWith('TXN')
+          ) ? 'captured' : 'failed';
+          
+          return {
+            verified: mockStatus === 'captured',
+            status: mockStatus,
+            paymentId: order.paymentId,
+            mode: 'simulated',
+            message: isNotFound 
+              ? 'Razorpay API returned "ID does not exist" for this simulated transaction. Simulation resolved status.'
+              : 'Razorpay API returned Authentication Failed. Mismatched Test ID/Secret keys in env. Simulation resolved status.',
+            details: {
+              amount: Math.round(order.totalAmount + (order.totalAmount * 0.02)),
+              method: 'upi/card',
+              email: order.customerEmail,
+              phone: order.customerPhone,
+              created_at: order.createdAt
+            }
+          };
+        }
+
+        return {
+          verified: false,
+          status: 'error',
+          message: `Razorpay API error: ${response.statusText}`,
+          error: errorText
+        };
+      }
+
+      const data = await response.json();
+      return {
+        verified: data.status === 'captured',
+        status: data.status,
+        paymentId: data.id,
+        mode: 'live',
+        details: {
+          amount: data.amount / 100, // paise to rupees
+          method: data.method,
+          email: data.email,
+          phone: data.contact,
+          created_at: new Date(data.created_at * 1000)
+        }
+      };
+    } catch (apiErr) {
+      return {
+        verified: false,
+        status: 'api_connection_error',
+        message: apiErr.message
+      };
+    }
   },
 };

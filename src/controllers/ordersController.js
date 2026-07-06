@@ -49,13 +49,40 @@ export const ordersController = {
   // PATCH /api/orders/:id/status  (admin only)
   async updateStatus(req, res, next) {
     try {
-      const { status, notes } = req.validated;
+      const { status, notes, items, otp } = req.validated;
       const adminId = req.admin?.adminId;
-      const updated = await ordersService.updateStatus(req.params.id, status, notes, adminId);
+      const updated = await ordersService.updateStatus(req.params.id, status, notes, adminId, items, otp);
       res.json({
         success: true,
         data:    updated,
         message: 'Order status updated',
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // POST /api/orders/:id/send-otp  (admin only)
+  async sendOTP(req, res, next) {
+    try {
+      const result = await ordersService.sendOTP(req.params.id);
+      res.json({
+        success: true,
+        message: 'OTP verification code sent successfully (Simulated)',
+        otp: result.otp,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // POST /api/orders/:id/verify-payment  (admin only)
+  async verifyPayment(req, res, next) {
+    try {
+      const result = await ordersService.verifyPayment(req.params.id);
+      res.json({
+        success: true,
+        data: result
       });
     } catch (error) {
       next(error);

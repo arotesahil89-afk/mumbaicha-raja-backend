@@ -42,4 +42,18 @@ router.patch(
   ordersController.updateStatus
 );
 
+// POST /api/orders/:id/verify-payment  — admin only
+router.post(
+  '/:id/verify-payment',
+  authMiddleware,
+  ordersController.verifyPayment
+);
+
+// POST /api/orders/:id/send-otp  — admin only
+router.post(
+  '/:id/send-otp',
+  authMiddleware,
+  ordersController.sendOTP
+);
+
 export default router;

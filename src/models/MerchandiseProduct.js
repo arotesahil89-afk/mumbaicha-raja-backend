@@ -20,6 +20,10 @@ const MerchandiseProduct = sequelize.define('MerchandiseProduct', {
     type: DataTypes.JSON, // Support multilingual description object
     allowNull: true,
   },
+  type: {
+    type: DataTypes.STRING(191),
+    allowNull: true,
+  },
   price: {
     type: DataTypes.INTEGER,
     allowNull: false,
@@ -35,10 +39,6 @@ const MerchandiseProduct = sequelize.define('MerchandiseProduct', {
   stock: {
     type: DataTypes.JSON,
     allowNull: false,
-  },
-  type: {
-    type: DataTypes.STRING(191),
-    allowNull: true,
   },
   color: {
     type: DataTypes.STRING(191),

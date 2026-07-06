@@ -106,11 +106,19 @@ export const createOrderSchema = Joi.object({
 
 export const updateOrderStatusSchema = Joi.object({
   status: Joi.string()
-    .valid('pending', 'confirmed', 'cancelled', 'picked_up')
+    .valid('pending', 'confirmed', 'cancelled', 'picked_up', 'partially_picked_up')
     .required()
     .messages({
-      'any.only':     'Status must be one of: pending, confirmed, cancelled, picked_up',
+      'any.only':     'Status must be one of: pending, confirmed, cancelled, picked_up, partially_picked_up',
       'any.required': 'Status is required',
     }),
   notes: Joi.string().optional().allow('', null),
+  items: Joi.array().items(
+    Joi.object({
+      id: Joi.string().required(),
+      size: Joi.string().required(),
+      status: Joi.string().valid('pending', 'picked_up').required(),
+    })
+  ).optional(),
+  otp: Joi.string().length(6).optional().allow('', null),
 });
