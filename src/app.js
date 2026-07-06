@@ -46,6 +46,42 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
+import { encryptData, decryptData } from './utils/cryptoUtils.js';
+
+// Global Encryption Middleware
+app.use((req, res, next) => {
+  // 1. Decrypt incoming payload (if present)
+  if (req.body && req.body.payload) {
+    const decryptedBody = decryptData(req.body.payload);
+    if (decryptedBody) {
+      req.body = decryptedBody;
+    } else {
+      return res.status(400).json({ success: false, message: 'Invalid encrypted payload' });
+    }
+  }
+
+  // 2. Encrypt outgoing responses
+  const originalJson = res.json;
+  res.json = function (data) {
+    // Prevent double encryption and bypass for errors/health if desired
+    // For this requirement, we encrypt EVERYTHING except if it's already got a payload wrapper
+    if (data && data.payload) {
+      return originalJson.call(this, data);
+    }
+    
+    // Some routes return raw buffers or streams, but res.json is for JSON.
+    const encryptedText = encryptData(data);
+    if (encryptedText) {
+      return originalJson.call(this, { payload: encryptedText });
+    } else {
+      // Fallback if encryption fails
+      return originalJson.call(this, data);
+    }
+  };
+
+  next();
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
