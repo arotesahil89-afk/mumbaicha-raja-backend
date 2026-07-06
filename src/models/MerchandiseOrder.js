@@ -77,6 +77,10 @@ const MerchandiseOrder = sequelize.define('MerchandiseOrder', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  pincode: {
+    type: DataTypes.STRING(6),
+    allowNull: true,
+  },
   shipping: {
     type: DataTypes.JSON,
     allowNull: true,

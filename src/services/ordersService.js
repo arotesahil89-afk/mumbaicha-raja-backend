@@ -110,6 +110,7 @@ export const ordersService = {
       customerEmail: data.customerEmail,
       customerPhone: data.customerPhone,
       address:       data.address || null,
+      pincode:       data.pincode || null,
       productName:   data.productName,
       productId:     data.productId   || null,
       size:          data.size,
