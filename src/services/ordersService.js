@@ -55,9 +55,21 @@ export const ordersService = {
       deliveryCharge = data.deliveryCharge || 0;
     }
 
+    // Calculate Convenience/Booking Fee exactly like the frontend
+    const computeFee = (mode, amount, showCod) => {
+      if (!showCod) return 0;
+      if (mode === "pickup") return 19;
+      // Standard Razorpay Domestic fee is 2% + 18% GST = 2.36%
+      return Math.ceil(amount * 0.0236);
+    };
+
     // Force recalculate totalAmount from unitPrice, quantity and master delivery charge
     const subtotal = Number(data.quantity) * Number(data.unitPrice);
-    const totalAmount = subtotal + deliveryCharge;
+    const baseTotal = subtotal + deliveryCharge;
+    
+    // The mode determines the fee
+    const fee = computeFee(data.paymentMethod, baseTotal, true);
+    const totalAmount = baseTotal + fee;
 
     // Parse items from data.size (e.g. "S: 10, L: 10")
     const items = [];
@@ -95,7 +107,6 @@ export const ordersService = {
       customerPhone: data.customerPhone,
       address:       data.address || null,
       pincode:       data.pincode || null,
-      deliveryMethod: data.deliveryMethod || 'pickup',
       productName:   data.productName,
       productId:     data.productId   || null,
       size:          data.size,
