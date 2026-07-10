@@ -13,6 +13,7 @@ import eventsRoutes from './routes/events.js';
 import ordersRoutes from './routes/orders.js';
 import shippingRoutes from './routes/shipping.js';
 import merchandiseRoutes from './routes/merchandise.js';
+import adminsRoutes from './routes/admins.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -95,6 +96,7 @@ app.use('/api/events', eventsRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/shipping', shippingRoutes);
 app.use('/api/merchandise', merchandiseRoutes);
+app.use('/api/admins', adminsRoutes);
 
 // 404 handler
 app.use((req, res) => {

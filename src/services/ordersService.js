@@ -104,6 +104,9 @@ export const ordersService = {
       });
     }
 
+    // Generate a random 6-digit OTP/PIN for pickup verification
+    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
     const order = await MerchandiseOrder.create({
       orderNo,
       customerName:  data.customerName,
@@ -122,6 +125,7 @@ export const ordersService = {
       deliveryMethod:data.deliveryMethod || 'pickup',
       status:        data.paymentMethod === 'pickup' ? 'pending' : 'confirmed',
       items:         items,
+      otpCode:       generatedOtp,
     });
 
     // Auto-create shipment for online/card/upi payments

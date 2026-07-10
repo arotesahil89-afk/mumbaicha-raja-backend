@@ -16,37 +16,55 @@ dotenv.config();
 import sequelize    from '../config/db.js';
 import Admin        from '../models/Admin.js';
 import { hashPassword } from '../utils/helpers.js';
-// ─── Load credentials from .env ────────────────────────────────────────────
-const ADMIN_EMAIL    = process.env.INITIAL_ADMIN_EMAIL    || 'admin@mumbaicharaja.com';
-const ADMIN_PASSWORD = process.env.INITIAL_ADMIN_PASSWORD;
-if (!ADMIN_PASSWORD) {
-  console.error('❌ INITIAL_ADMIN_PASSWORD is not set in .env');
-  console.error('   Add it to your .env file and re-run:');
-  console.error('   INITIAL_ADMIN_PASSWORD=YourSecurePassword123!');
-  process.exit(1);
-}
+const ADMIN_EMAIL    = 'admin@mumbaicharaja.com';
+const ADMIN_PASSWORD = 'MCRAdmin@12345';
+const SACHIN_EMAIL    = 'sachin@mumbaicharaja.com';
+const SACHIN_PASSWORD = 'Sachin@12345';
+
 async function seed() {
   try {
     console.log('🔌 Connecting to database...');
     await sequelize.authenticate();
     console.log('✓  Connection established.\n');
+    
     // ── Admin ────────────────────────────────────────────────────────────────
     const existingAdmin = await Admin.findOne({ where: { email: ADMIN_EMAIL } });
+    const adminHashed = await hashPassword(ADMIN_PASSWORD);
+    
     if (existingAdmin) {
-      console.log(`ℹ️  Admin already exists: ${ADMIN_EMAIL} — skipping.`);
+      console.log(`ℹ️  Admin already exists: ${ADMIN_EMAIL} — updating password...`);
+      await existingAdmin.update({ password: adminHashed, name: 'Main Admin' });
+      console.log(`✅ Admin updated: ${ADMIN_EMAIL}`);
     } else {
-      const hashedPassword = await hashPassword(ADMIN_PASSWORD);
       await Admin.create({
+        name:     'Main Admin',
         email:    ADMIN_EMAIL,
-        password: hashedPassword,
+        password: adminHashed,
         role:     'admin',
         active:   true,
       });
-      console.log(`✅ Admin created:`);
-      console.log(`   Email   : ${ADMIN_EMAIL}`);
-      console.log(`   Password: (from INITIAL_ADMIN_PASSWORD in .env)`);
-      console.log(`   Role    : admin`);
+      console.log(`✅ Admin created: ${ADMIN_EMAIL}`);
     }
+
+    // ── Sachin ────────────────────────────────────────────────────────────────
+    const existingSachin = await Admin.findOne({ where: { email: SACHIN_EMAIL } });
+    const sachinHashed = await hashPassword(SACHIN_PASSWORD);
+    
+    if (existingSachin) {
+      console.log(`ℹ️  Admin already exists: ${SACHIN_EMAIL} — updating password...`);
+      await existingSachin.update({ password: sachinHashed, name: 'Sachin' });
+      console.log(`✅ Admin updated: ${SACHIN_EMAIL}`);
+    } else {
+      await Admin.create({
+        name:     'Sachin',
+        email:    SACHIN_EMAIL,
+        password: sachinHashed,
+        role:     'admin',
+        active:   true,
+      });
+      console.log(`✅ Admin created: ${SACHIN_EMAIL}`);
+    }
+
     console.log('\n🌱 Seeding complete.');
     process.exit(0);
   } catch (error) {
