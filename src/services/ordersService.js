@@ -166,11 +166,57 @@ export const ordersService = {
   },
 
   // ─── Get all orders (admin) with optional filters ──────────────────────
-  async getAll({ status, search, page = 1, limit = 50 } = {}) {
+  async getAll({ status, deliveryMethod, dateFilter, customDate, search, page = 1, limit = 50 } = {}) {
     const where = {};
 
-    if (status && status !== 'all') {
-      where.status = status;
+    if (status) {
+      const statusArray = Array.isArray(status)
+        ? status
+        : typeof status === 'string'
+          ? status.split(',').filter(Boolean)
+          : [];
+      const cleanArray = statusArray.filter(s => s !== 'all');
+      if (cleanArray.length > 0) {
+        where.status = { [Op.in]: cleanArray };
+      }
+    }
+
+    if (deliveryMethod) {
+      const deliveryArray = Array.isArray(deliveryMethod)
+        ? deliveryMethod
+        : typeof deliveryMethod === 'string'
+          ? deliveryMethod.split(',').filter(Boolean)
+          : [];
+      const cleanArray = deliveryArray.filter(d => d !== 'all');
+      if (cleanArray.length > 0) {
+        where.deliveryMethod = { [Op.in]: cleanArray };
+      }
+    }
+
+    if (dateFilter && dateFilter !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+
+      if (dateFilter === 'today') {
+        where.createdAt = {
+          [Op.gte]: today,
+        };
+      } else if (dateFilter === 'yesterday') {
+        where.createdAt = {
+          [Op.gte]: yesterday,
+          [Op.lt]: today,
+        };
+      } else if (dateFilter === 'custom' && customDate) {
+        const picked = new Date(customDate);
+        const pickedEnd = new Date(picked);
+        pickedEnd.setDate(picked.getDate() + 1);
+        where.createdAt = {
+          [Op.gte]: picked,
+          [Op.lt]: pickedEnd,
+        };
+      }
     }
 
     if (search) {

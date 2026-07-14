@@ -18,8 +18,8 @@ export const ordersController = {
   // GET /api/orders  (admin only)
   async getAll(req, res, next) {
     try {
-      const { status, search, page, limit } = req.query;
-      const result = await ordersService.getAll({ status, search, page, limit });
+      const { status, deliveryMethod, dateFilter, customDate, search, page, limit } = req.query;
+      const result = await ordersService.getAll({ status, deliveryMethod, dateFilter, customDate, search, page, limit });
       res.json({ success: true, data: result });
     } catch (error) {
       next(error);
