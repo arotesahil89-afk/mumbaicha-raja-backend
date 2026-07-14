@@ -27,21 +27,39 @@ const app = express();
 
 // Security middleware
 app.use(helmet());
-app.use(cors({
-  origin: [
-    // Local development
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",
-    // Production (keep if needed)
-    "https://nexbuild-xaee.onrender.com",
-  ],
+
+const allowedOrigins = [
+  // Local development
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+  // Production
+  "https://nexbuild-xaee.onrender.com",
+  "https://mumbaicharaja.co",
+  "https://www.mumbaicharaja.co",
+];
+// Allow adding more origins via env (comma-separated), e.g. FRONTEND_URL
+if (process.env.FRONTEND_URL) {
+  process.env.FRONTEND_URL.split(",").map((s) => s.trim()).forEach((o) => {
+    if (o && !allowedOrigins.includes(o)) allowedOrigins.push(o);
+  });
+}
+
+const corsOptions = {
+  origin(origin, cb) {
+    // Allow non-browser / same-origin requests (no Origin header) and allowlisted origins.
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error(`CORS blocked for origin: ${origin}`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // explicit preflight handling
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
