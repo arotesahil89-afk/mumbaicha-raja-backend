@@ -463,13 +463,9 @@ export const ordersController = {
               forms.forEach(form => {
                 try {
                   const actionUrl = new URL(form.action);
-                  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-                    if (actionUrl.hostname !== window.location.hostname) {
-                      actionUrl.protocol = window.location.protocol;
-                      actionUrl.host = window.location.host;
-                      form.action = actionUrl.toString();
-                    }
-                  }
+                  actionUrl.protocol = window.location.protocol;
+                  actionUrl.host = window.location.host;
+                  form.action = actionUrl.toString();
                 } catch (e) {
                   console.error("Failed to parse form action URL:", e);
                 }
