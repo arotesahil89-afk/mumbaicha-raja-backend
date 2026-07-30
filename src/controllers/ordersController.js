@@ -3,6 +3,7 @@ import MerchandiseOrder from '../models/MerchandiseOrder.js';
 import MerchandiseProduct from '../models/MerchandiseProduct.js';
 import { shippingService } from '../services/shipping/shippingService.js';
 import { encrypt, decrypt } from '../utils/ccavutil.js';
+import { getCCAvenueConfig } from '../utils/ccavenueConfig.js';
 
 
 export const ordersController = {
@@ -105,11 +106,8 @@ export const ordersController = {
       
       const order = await ordersService.create(orderData);
       
-      const merchantId = process.env.CCAVENUE_MERCHANT_ID || '123456';
-      const accessCode = process.env.CCAVENUE_ACCESS_CODE || 'ATMD94NG82BY53DMYB';
-      const workingKey = process.env.CCAVENUE_WORKING_KEY || '1D67BA608D9E93E8A7F8DF90E5ABB804';
-      const gatewayUrl = process.env.CCAVENUE_GATEWAY_URL || 'http://localhost:5000/api/orders/ccavenue-simulator';
-      const redirectUrl = process.env.CCAVENUE_REDIRECT_URL || 'http://localhost:5000/api/orders/ccavenue-response';
+      const { merchantId, accessCode, workingKey, gatewayUrl, redirectUrl, env: ccEnv } = getCCAvenueConfig();
+      console.log(`[CCAvenue] Mode: ${ccEnv} | Gateway: ${gatewayUrl}`);
 
       // Prepare request query string for encryption
       const params = new URLSearchParams();
@@ -153,7 +151,7 @@ export const ordersController = {
         return res.status(400).send('Error: encResp parameter is missing');
       }
 
-      const workingKey = process.env.CCAVENUE_WORKING_KEY || '1D67BA608D9E93E8A7F8DF90E5ABB804';
+      const { workingKey } = getCCAvenueConfig();
       const decrypted = decrypt(encResp, workingKey);
       
       const params = new URLSearchParams(decrypted);
@@ -253,7 +251,7 @@ export const ordersController = {
         return res.status(400).send('Error: encRequest is missing');
       }
 
-      const workingKey = process.env.CCAVENUE_WORKING_KEY || '1D67BA608D9E93E8A7F8DF90E5ABB804';
+      const { workingKey } = getCCAvenueConfig();
       const decrypted = decrypt(encRequest, workingKey);
       const params = new URLSearchParams(decrypted);
 
