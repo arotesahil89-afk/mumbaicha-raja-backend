@@ -1,9 +1,12 @@
 import { Op } from 'sequelize';
 import MerchandiseOrder from '../models/MerchandiseOrder.js';
+import MerchandiseProduct from '../models/MerchandiseProduct.js';
 import AuditLog from '../models/AuditLog.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 import { shippingService } from './shipping/shippingService.js';
+
+const MAX_ORDER_QTY = 100; // hard limit per order (keep in sync with validation + frontend)
 
 
 
@@ -67,42 +70,51 @@ export const ordersService = {
       return Math.ceil(amount * 0.0236);
     };
 
-    // Force recalculate totalAmount from unitPrice, quantity and master delivery charge
-    const subtotal = Number(data.quantity) * Number(data.unitPrice);
-    const baseTotal = subtotal + deliveryCharge;
-    
-    // The mode determines the fee
-    const fee = computeFee(data.paymentMethod, baseTotal, true);
-    const totalAmount = baseTotal + fee;
+    // ─── SECURITY: never trust client-sent price. Look up the authoritative
+    // unit price from the product master; fall back to the sent value only if
+    // no product record is found. ────────────────────────────────────────────
+    let unitPrice = Number(data.unitPrice) || 0;
+    if (data.productId) {
+      const product = await MerchandiseProduct.findByPk(data.productId);
+      if (product && Number(product.price) > 0) {
+        unitPrice = Number(product.price);
+      }
+    }
+    if (!(unitPrice > 0)) {
+      throw new AppError('Unable to determine product price', 400);
+    }
 
-    // Parse items from data.size (e.g. "S: 10, L: 10")
+    // ─── Build items from the size breakdown ("48: 10, 50: 90") and use the
+    // summed count as the AUTHORITATIVE quantity, so the size string can't
+    // smuggle more pieces than the quantity field allows. ─────────────────────
     const items = [];
     if (data.size && typeof data.size === 'string') {
       const parts = data.size.split(',').map(p => p.trim());
       parts.forEach(part => {
         const match = part.match(/^([^:]+):\s*(\d+)$/);
-        if (match) {
-          const sz = match[1];
-          const qty = parseInt(match[2], 10);
-          for (let i = 0; i < qty; i++) {
-            items.push({
-              id: `${orderNo}-${sz}-${String(i + 1).padStart(2, '0')}`,
-              size: sz,
-              status: 'pending',
-            });
-          }
-        } else {
-          const qty = Number(data.quantity) || 1;
-          for (let i = 0; i < qty; i++) {
-            items.push({
-              id: `${orderNo}-${data.size}-${String(i + 1).padStart(2, '0')}`,
-              size: data.size,
-              status: 'pending',
-            });
-          }
+        const sz = match ? match[1].trim() : data.size;
+        const qty = match ? parseInt(match[2], 10) : (Number(data.quantity) || 1);
+        for (let i = 0; i < qty; i++) {
+          items.push({
+            id: `${orderNo}-${sz}-${String(items.length + 1).padStart(3, '0')}`,
+            size: sz,
+            status: 'pending',
+          });
         }
       });
     }
+
+    // Authoritative quantity = number of pieces actually built.
+    const quantity = items.length || Number(data.quantity) || 1;
+    if (quantity < 1 || quantity > MAX_ORDER_QTY) {
+      throw new AppError(`Quantity must be between 1 and ${MAX_ORDER_QTY} pieces per order`, 400);
+    }
+
+    // Recalculate totals from the authoritative price & quantity.
+    const subtotal = quantity * unitPrice;
+    const baseTotal = subtotal + deliveryCharge;
+    const fee = computeFee(data.paymentMethod, baseTotal, true);
+    const totalAmount = baseTotal + fee;
 
     // Generate a random 6-digit OTP/PIN for pickup verification
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -117,19 +129,19 @@ export const ordersService = {
       productName:   data.productName,
       productId:     data.productId   || null,
       size:          data.size,
-      quantity:      Number(data.quantity),
-      unitPrice:     Number(data.unitPrice),
-      totalAmount:   totalAmount, // Backend-computed total amount
+      quantity:      quantity,   // authoritative (summed from size breakdown)
+      unitPrice:     unitPrice,   // authoritative (from product master)
+      totalAmount:   totalAmount, // backend-computed total amount
       paymentMethod: data.paymentMethod || 'online',
       paymentId:     data.paymentId    || null,
       deliveryMethod:data.deliveryMethod || 'pickup',
-      status:        data.paymentMethod === 'pickup' ? 'pending' : 'confirmed',
+      status:        (data.paymentMethod === 'pickup' || data.paymentMethod === 'ccavenue') ? 'pending' : 'confirmed',
       items:         items,
       otpCode:       generatedOtp,
     });
 
-    // Auto-create shipment for online/card/upi payments
-    if (order.paymentMethod !== 'pickup' && order.address) {
+    // Auto-create shipment for online/card/upi payments (excluding ccavenue which handles it post-payment)
+    if (order.paymentMethod !== 'pickup' && order.paymentMethod !== 'ccavenue' && order.address) {
       try {
         const shipment = await shippingService.createShipment({
           orderId: order.id,
@@ -423,6 +435,23 @@ export const ordersService = {
       }
     });
     if (!order) throw new AppError('Order not found', 404);
+
+    if (order.paymentMethod === 'ccavenue') {
+      return {
+        verified: order.status === 'confirmed',
+        status: order.status === 'confirmed' ? 'captured' : 'failed',
+        paymentId: order.paymentId,
+        mode: 'ccavenue',
+        message: order.status === 'confirmed' ? 'Payment was successfully captured via CCAvenue.' : 'Payment has not been confirmed yet.',
+        details: {
+          amount: order.totalAmount,
+          method: 'ccavenue',
+          email: order.customerEmail,
+          phone: order.customerPhone,
+          created_at: order.createdAt
+        }
+      };
+    }
 
     if (order.paymentMethod === 'pickup') {
       return {

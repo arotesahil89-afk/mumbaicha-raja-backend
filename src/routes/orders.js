@@ -13,6 +13,26 @@ router.post(
   ordersController.create
 );
 
+// POST /api/orders/ccavenue-initiate — public (called to start payment)
+router.post(
+  '/ccavenue-initiate',
+  validationMiddleware(createOrderSchema),
+  ordersController.ccavenueInitiate
+);
+
+// POST /api/orders/ccavenue-response — public (callback from CCAvenue)
+router.post(
+  '/ccavenue-response',
+  ordersController.ccavenueResponse
+);
+
+// POST /api/orders/ccavenue-simulator — public (mock gateway simulator)
+router.post(
+  '/ccavenue-simulator',
+  ordersController.ccavenueSimulator
+);
+
+
 // GET /api/orders  — admin only
 router.get(
   '/',
