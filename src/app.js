@@ -47,19 +47,34 @@ if (process.env.FRONTEND_URL) {
   });
 }
 
-const corsOptions = {
-  origin(origin, cb) {
-    // Allow non-browser / same-origin requests (no Origin header) and allowlisted origins.
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    return cb(new Error(`CORS blocked for origin: ${origin}`));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+const corsOptionsDelegate = (req, callback) => {
+  const origin = req.header('Origin');
+  let corsOptions = {
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  };
+
+  const bypassPaths = [
+    '/api/orders/ccavenue-response',
+    '/api/orders/ccavenue-simulator'
+  ];
+
+  if (bypassPaths.includes(req.path)) {
+    corsOptions.origin = true;
+    callback(null, corsOptions);
+  } else {
+    if (!origin || origin === 'null' || allowedOrigins.includes(origin)) {
+      corsOptions.origin = true;
+      callback(null, corsOptions);
+    } else {
+      callback(new Error(`CORS blocked for origin: ${origin}`));
+    }
+  }
 };
 
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // explicit preflight handling
+app.use(cors(corsOptionsDelegate));
+app.options('*', cors(corsOptionsDelegate)); // explicit preflight handling
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
