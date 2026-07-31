@@ -136,7 +136,8 @@ export const ordersController = {
         success: true,
         encRequest,
         accessCode,
-        actionUrl: gatewayUrl
+        actionUrl: gatewayUrl,
+        requestParams: params.toString()
       });
     } catch (error) {
       next(error);
@@ -158,6 +159,9 @@ export const ordersController = {
       const orderNo = params.get('order_id');
       const orderStatus = params.get('order_status'); // Success, Failure, Aborted
       const trackingId = params.get('tracking_id') || '';
+      const bankRefNo = params.get('bank_ref_no') || '';
+      const paymentMode = params.get('payment_mode') || '';
+      const cardName = params.get('card_name') || '';
       const orderId = params.get('merchant_param1');
       const failureMessage = params.get('failure_message') || 'Payment was unsuccessful';
 
@@ -195,7 +199,7 @@ export const ordersController = {
         await order.update({
           status: 'confirmed',
           paymentId: trackingId,
-          notes: `CCAvenue tracking_id: ${trackingId}, bank_ref_no: ${params.get('bank_ref_no') || ''}, payment_mode: ${params.get('payment_mode') || ''}`
+          notes: `CCAvenue tracking_id: ${trackingId}, bank_ref_no: ${bankRefNo}, payment_mode: ${paymentMode}`
         });
 
         // Auto-create shipment if home delivery and address present
@@ -226,7 +230,7 @@ export const ordersController = {
           }
         }
 
-        redirectUrl = `${frontendUrl}/merchandise/${productSlug}/checkout?status=success&orderNo=${order.orderNo}&amount=${order.totalAmount}&txnId=${trackingId}&deliveryMethod=${order.deliveryMethod}&customerName=${encodeURIComponent(order.customerName)}&customerPhone=${order.customerPhone}&customerEmail=${order.customerEmail}&size=${encodeURIComponent(order.size)}&quantity=${order.quantity}&otpCode=${order.otpCode || ''}`;
+        redirectUrl = `${frontendUrl}/merchandise/${productSlug}/checkout?status=success&orderNo=${order.orderNo}&amount=${order.totalAmount}&txnId=${trackingId}&bankRefNo=${encodeURIComponent(bankRefNo)}&paymentMode=${encodeURIComponent(paymentMode)}&cardName=${encodeURIComponent(cardName)}&orderStatus=${orderStatus}&deliveryMethod=${order.deliveryMethod}&customerName=${encodeURIComponent(order.customerName)}&customerPhone=${order.customerPhone}&customerEmail=${order.customerEmail}&size=${encodeURIComponent(order.size)}&quantity=${order.quantity}&otpCode=${order.otpCode || ''}`;
       } else {
         // Update status to cancelled
         await order.update({
