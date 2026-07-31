@@ -32,6 +32,12 @@ router.post(
   ordersController.ccavenueSimulator
 );
 
+// GET /api/orders/pavati/:id — public (called by SMS Pavati download page)
+router.get(
+  '/pavati/:id',
+  ordersController.getPavati
+);
+
 
 // GET /api/orders  — admin only
 router.get(

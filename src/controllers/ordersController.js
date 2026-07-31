@@ -1,3 +1,4 @@
+import { Op } from 'sequelize';
 import { ordersService } from '../services/ordersService.js';
 import MerchandiseOrder from '../models/MerchandiseOrder.js';
 import MerchandiseProduct from '../models/MerchandiseProduct.js';
@@ -7,6 +8,45 @@ import { getCCAvenueConfig } from '../utils/ccavenueConfig.js';
 
 
 export const ordersController = {
+  // GET /api/orders/pavati/:id  (public — called by SMS link page)
+  async getPavati(req, res, next) {
+    try {
+      const { id } = req.params;
+      const order = await MerchandiseOrder.findOne({
+        where: {
+          [Op.or]: [
+            { id: id },
+            { orderNo: id }
+          ]
+        }
+      });
+
+      if (!order) {
+        return res.status(404).json({ success: false, message: 'Order not found' });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          orderNo: order.orderNo,
+          customerName: order.customerName,
+          customerPhone: order.customerPhone,
+          customerEmail: order.customerEmail,
+          productName: order.productName,
+          quantity: order.quantity,
+          unitPrice: order.unitPrice,
+          totalAmount: order.totalAmount,
+          paymentId: order.paymentId || order.id,
+          paymentMethod: order.paymentMethod,
+          deliveryMethod: order.deliveryMethod,
+          status: order.status,
+          createdAt: order.createdAt
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
   // POST /api/orders  (public — called from frontend after payment)
   async create(req, res, next) {
     try {
