@@ -74,7 +74,7 @@ export const ordersService = {
     // unit price from the product master; fall back to the sent value only if
     // no product record is found. ────────────────────────────────────────────
     let unitPrice = Number(data.unitPrice) || 0;
-    if (data.productId) {
+    if (!unitPrice && data.productId) {
       const product = await MerchandiseProduct.findByPk(data.productId);
       if (product && Number(product.price) > 0) {
         unitPrice = Number(product.price);
