@@ -1,9 +1,7 @@
-import axios from 'axios';
-
 /**
  * Backend MSG91 Service
  * Executes secure server-to-server calls using secret process.env.MSG91_AUTH_KEY.
- * Prevents exposing API keys in frontend bundles.
+ * Uses native fetch (Node 18+) so no external dependencies (like axios) are required.
  */
 export const msg91Service = {
   // Server-side in-memory deduplication set
@@ -60,20 +58,23 @@ export const msg91Service = {
         ]
       };
 
-      const response = await axios.post('https://control.msg91.com/api/v5/flow/', payload, {
+      const response = await fetch('https://control.msg91.com/api/v5/flow/', {
+        method: 'POST',
         headers: {
           authkey: authKey,
           'content-type': 'application/json'
-        }
+        },
+        body: JSON.stringify(payload)
       });
 
-      console.log(`[Backend MSG91 Success] Order #${orderNo} SMS sent to +${cleanedPhone}`, response.data);
-      return { success: true, data: response.data };
+      const data = await response.json().catch(() => ({}));
+      console.log(`[Backend MSG91 Success] Order #${orderNo} SMS sent to +${cleanedPhone}`, data);
+      return { success: true, data };
     } catch (err) {
-      console.error('[Backend MSG91 Error]', err?.response?.data || err.message);
+      console.error('[Backend MSG91 Error]', err?.message || err);
       // Release lock on API failure to allow retry if needed
       this.sentOrdersLock.delete(orderNo);
-      return { success: false, message: err?.response?.data?.message || err.message };
+      return { success: false, message: err?.message || 'Failed to call MSG91 API' };
     }
   }
 };
