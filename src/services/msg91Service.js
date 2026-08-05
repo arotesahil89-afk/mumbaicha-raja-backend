@@ -99,53 +99,14 @@ export const msg91Service = {
       return { success: true, message: 'MSG91 OTP SMS provisioned in simulation mode.', simulated: true };
     }
 
-    const otpStr = String(otpCode);
-
-    // METHOD A: MSG91 Dedicated OTP API Endpoint
-    try {
-      const otpApiUrl = `https://control.msg91.com/api/v5/otp?template_id=${encodeURIComponent(flowId)}&mobile=${encodeURIComponent(cleanedPhone)}&otp=${encodeURIComponent(otpStr)}&sender=${encodeURIComponent(senderId)}`;
-      const response = await fetch(otpApiUrl, {
-        method: 'POST',
-        headers: {
-          authkey: authKey,
-          'content-type': 'application/json'
-        },
-        body: JSON.stringify({
-          template_id: flowId,
-          mobile: cleanedPhone,
-          otp: otpStr,
-          sender: senderId
-        })
-      });
-      const data = await response.json().catch(() => ({}));
-      if (response.ok && (data.type === 'success' || data.message === 'OTP sent successfully')) {
-        console.log(`[Backend MSG91 OTP API Success] Sent OTP ${otpStr} to +${cleanedPhone}`, data);
-        return { success: true, data };
-      }
-      console.log(`[Backend MSG91 OTP API Info] OTP API response:`, data, `— Attempting Flow API fallback...`);
-    } catch (err) {
-      console.warn(`[Backend MSG91 OTP API Warning] ${err?.message || err}. Falling back to Flow API...`);
-    }
-
-    // METHOD B: MSG91 Flow API Fallback
     try {
       const payload = {
         template_id: flowId,
         sender: senderId,
-        short_url: '0',
         recipients: [
           {
             mobiles: cleanedPhone,
-            otp: otpStr,
-            OTP: otpStr,
-            var1: otpStr,
-            VAR1: otpStr,
-            var: otpStr,
-            VAR: otpStr,
-            code: otpStr,
-            CODE: otpStr,
-            otpcode: otpStr,
-            otp_code: otpStr
+            otp: String(otpCode)
           }
         ]
       };
@@ -160,11 +121,11 @@ export const msg91Service = {
       });
 
       const data = await response.json().catch(() => ({}));
-      console.log(`[Backend MSG91 Flow Success] Sent OTP ${otpStr} to +${cleanedPhone}`, data);
+      console.log(`[Backend MSG91 OTP Success] Sent OTP to +${cleanedPhone}`, data);
       return { success: true, data };
     } catch (err) {
       console.error('[Backend MSG91 OTP Error]', err?.message || err);
-      return { success: false, message: err?.message || 'Failed to call MSG91 API' };
+      return { success: false, message: err?.message || 'Failed to call MSG91 OTP API' };
     }
   }
 };
