@@ -5,6 +5,7 @@ import AuditLog from '../models/AuditLog.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 import { shippingService } from './shipping/shippingService.js';
+import { msg91Service } from './msg91Service.js';
 
 const MAX_ORDER_QTY = 100; // hard limit per order (keep in sync with validation + frontend)
 
@@ -422,13 +423,17 @@ export const ordersService = {
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     await order.update({ otpCode: otp });
 
-    // Mock SMS / console output
+    // Send OTP SMS via MSG91 (Falls back to simulation mode if keys not set)
+    const smsResult = await msg91Service.sendOtpSMS({
+      customerPhone: order.customerPhone,
+      otpCode: otp
+    });
+
     console.log('--------------------------------------------------');
-    console.log(`[SMS MOCK] Sending OTP to +91 ${order.customerPhone}`);
-    console.log(`Message: Your Mumbai Cha Raja pickup verification code is: ${otp}. Please share this with the counter coordinator.`);
+    console.log(`[SMS OTP] Sent to +91 ${order.customerPhone} (OTP: ${otp})`, smsResult);
     console.log('--------------------------------------------------');
 
-    return { success: true, otp };
+    return { success: true, otp, smsResult };
   },
 
   // ─── Verify payment with Razorpay API / Simulator ───────────────────────────
