@@ -1,5 +1,6 @@
 import { Op } from 'sequelize';
 import { ordersService } from '../services/ordersService.js';
+import { msg91Service } from '../services/msg91Service.js';
 import MerchandiseOrder from '../models/MerchandiseOrder.js';
 import MerchandiseProduct from '../models/MerchandiseProduct.js';
 import { shippingService } from '../services/shipping/shippingService.js';
@@ -8,6 +9,22 @@ import { getCCAvenueConfig } from '../utils/ccavenueConfig.js';
 
 
 export const ordersController = {
+  // POST /api/orders/send-sms (public — securely triggers MSG91 server-side)
+  async sendSms(req, res, next) {
+    try {
+      const { orderNo, customerPhone, customerName, amount, txnId } = req.body;
+      const result = await msg91Service.sendOrderConfirmationSMS({
+        orderNo,
+        customerPhone,
+        customerName,
+        amount,
+        txnId
+      });
+      res.json({ success: result.success, ...result });
+    } catch (error) {
+      next(error);
+    }
+  },
   // GET /api/orders/pavati/:id  (public — called by SMS link page)
   async getPavati(req, res, next) {
     try {

@@ -13,6 +13,12 @@ router.post(
   ordersController.create
 );
 
+// POST /api/orders/send-sms — public (called by frontend to securely trigger SMS via backend)
+router.post(
+  '/send-sms',
+  ordersController.sendSms
+);
+
 // POST /api/orders/ccavenue-initiate — public (called to start payment)
 router.post(
   '/ccavenue-initiate',
