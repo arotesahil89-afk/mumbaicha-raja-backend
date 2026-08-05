@@ -103,7 +103,7 @@ export const msg91Service = {
 
     // METHOD A: MSG91 Dedicated OTP API Endpoint
     try {
-      const otpApiUrl = `https://control.msg91.com/api/v5/otp?template_id=${encodeURIComponent(flowId)}&mobile=${encodeURIComponent(cleanedPhone)}&otp=${encodeURIComponent(otpStr)}`;
+      const otpApiUrl = `https://control.msg91.com/api/v5/otp?template_id=${encodeURIComponent(flowId)}&mobile=${encodeURIComponent(cleanedPhone)}&otp=${encodeURIComponent(otpStr)}&sender=${encodeURIComponent(senderId)}`;
       const response = await fetch(otpApiUrl, {
         method: 'POST',
         headers: {
@@ -113,7 +113,8 @@ export const msg91Service = {
         body: JSON.stringify({
           template_id: flowId,
           mobile: cleanedPhone,
-          otp: otpStr
+          otp: otpStr,
+          sender: senderId
         })
       });
       const data = await response.json().catch(() => ({}));
