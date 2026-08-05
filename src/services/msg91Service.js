@@ -106,7 +106,7 @@ export const msg91Service = {
         recipients: [
           {
             mobiles: cleanedPhone,
-            VAR1: otpCode
+            var1: otpCode
           }
         ]
       };
