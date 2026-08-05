@@ -109,7 +109,12 @@ export const msg91Service = {
         headers: {
           authkey: authKey,
           'content-type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          template_id: flowId,
+          mobile: cleanedPhone,
+          otp: otpStr
+        })
       });
       const data = await response.json().catch(() => ({}));
       if (response.ok && (data.type === 'success' || data.message === 'OTP sent successfully')) {
