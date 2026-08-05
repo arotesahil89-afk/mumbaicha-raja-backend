@@ -100,13 +100,23 @@ export const msg91Service = {
     }
 
     try {
+      const otpStr = String(otpCode);
       const payload = {
         template_id: flowId,
         sender: senderId,
         recipients: [
           {
             mobiles: cleanedPhone,
-            otp: String(otpCode)
+            otp: otpStr,
+            OTP: otpStr,
+            var1: otpStr,
+            VAR1: otpStr,
+            var: otpStr,
+            VAR: otpStr,
+            code: otpStr,
+            CODE: otpStr,
+            otpcode: otpStr,
+            otp_code: otpStr
           }
         ]
       };
