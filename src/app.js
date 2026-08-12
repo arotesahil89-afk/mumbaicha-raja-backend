@@ -121,17 +121,6 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// CI/CD Test endpoint
-app.get('/api/cicd', (req, res) => {
-  res.json({
-    success: true,
-    message: "CI/CD Pipeline Implemented Successfully 🚀",
-    status: "Zero-Downtime Deployment Active",
-    version: "1.0.0",
-    timestamp: new Date().toISOString(),
-  });
-});
-
 // Routes
 app.use('/shipping_docs', express.static(path.join(__dirname, '../shipping_docs')));
 app.use('/api/auth', authRoutes);
