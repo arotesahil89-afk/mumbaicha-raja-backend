@@ -3,38 +3,34 @@ module.exports = {
     {
       name: "MCR-API",
       script: "server.js",
+      cwd: "/home/ec2-user/mumbaicha-raja/api",
       interpreter: "node",
 
-      // ── Instance & Cluster ─────────────────────────────────────
-      instances: 1,          // set to "max" to use all CPU cores
-      exec_mode: "fork",     // use "cluster" when instances > 1
+      // ── Zero-Downtime Cluster Mode ─────────────────────────────
+      instances: 2,
+      exec_mode: "cluster",
 
       // ── Environment ────────────────────────────────────────────
-      env: {
-        NODE_ENV: "development",
-        PORT: 5000,
-      },
       env_production: {
         NODE_ENV: "production",
         PORT: 5000,
       },
 
       // ── Logs ───────────────────────────────────────────────────
-      out_file: "./logs/pm2-out.log",
-      error_file: "./logs/pm2-error.log",
+      out_file: "/home/ec2-user/mumbaicha-raja/logs/api-out.log",
+      error_file: "/home/ec2-user/mumbaicha-raja/logs/api-error.log",
       log_date_format: "YYYY-MM-DD HH:mm:ss Z",
       merge_logs: true,
 
-      // ── Restart behaviour ──────────────────────────────────────
-      watch: false,                   // enable in dev if desired
-      max_memory_restart: "300M",     // restart if RAM exceeds 300 MB
-      restart_delay: 3000,            // wait 3 s before restarting
-      max_restarts: 10,               // give up after 10 rapid crashes
+      // ── Memory & Restart Policy ────────────────────────────────
+      watch: false,
+      max_memory_restart: "350M",
+      restart_delay: 2000,
+      max_restarts: 10,
 
-      // ── Graceful shutdown ──────────────────────────────────────
-      kill_timeout: 5000,             // ms to wait before SIGKILL
-      listen_timeout: 8000,           // ms to wait for app "ready"
+      // ── Graceful Shutdown ──────────────────────────────────────
+      kill_timeout: 5000,
+      listen_timeout: 8000,
     },
   ],
 };
-

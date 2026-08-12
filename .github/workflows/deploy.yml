@@ -1,0 +1,56 @@
+name: Backend Zero-Downtime Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: backend_production_deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Backend API (Zero Downtime)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: SSH into Lightsail and Reload Backend
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USERNAME }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          port: ${{ secrets.LIGHTSAIL_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -e
+            echo "🚀 [Backend] Starting Zero-Downtime Deploy..."
+            
+            API_DIR="/home/ec2-user/mumbaicha-raja/api"
+            LOGS_DIR="/home/ec2-user/mumbaicha-raja/logs"
+
+            mkdir -p "$LOGS_DIR"
+            cd "$API_DIR"
+
+            echo "📥 Fetching latest backend code..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "📦 Installing production dependencies..."
+            if [ -f "package-lock.json" ]; then
+              npm ci --omit=dev --no-audit --no-fund
+            else
+              npm install --omit=dev --no-audit --no-fund
+            fi
+
+            echo "🔄 Rolling reload PM2 cluster (0 ms downtime)..."
+            if sudo pm2 describe MCR-API > /dev/null 2>&1; then
+              sudo pm2 reload ecosystem.config.cjs --env production --update-env
+            else
+              sudo pm2 start ecosystem.config.cjs --env production
+            fi
+            sudo pm2 save
+
+            echo "✅ [Backend] Deployed successfully with Zero Downtime!"
