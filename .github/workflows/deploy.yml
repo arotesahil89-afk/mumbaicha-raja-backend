@@ -39,8 +39,10 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
-            # ⚡ Smart Dependency Check: Only install if backend packages changed or node_modules missing
-            if [ ! -d "node_modules" ] || git diff "$OLD_COMMIT" HEAD --name-only | grep -E -q "package\.json|package-lock\.json"; then
+            # ⚡ Safe dependency check under set -e
+            CHANGED_PKG=$(git diff "$OLD_COMMIT" HEAD --name-only 2>/dev/null | grep -E "package\.json|package-lock\.json" || true)
+
+            if [ ! -d "node_modules" ] || [ -n "$CHANGED_PKG" ]; then
               echo "📦 Installing production dependencies..."
               if [ -f "package-lock.json" ]; then
                 npm ci --omit=dev --no-audit --no-fund
