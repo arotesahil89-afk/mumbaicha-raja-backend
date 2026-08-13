@@ -35,14 +35,20 @@ jobs:
             cd "$API_DIR"
 
             echo "📥 Fetching latest backend code..."
+            OLD_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "HEAD~1")
             git fetch origin main
             git reset --hard origin/main
 
-            echo "📦 Installing production dependencies..."
-            if [ -f "package-lock.json" ]; then
-              npm ci --omit=dev --no-audit --no-fund
+            # ⚡ Smart Dependency Check: Only install if backend packages changed or node_modules missing
+            if [ ! -d "node_modules" ] || git diff "$OLD_COMMIT" HEAD --name-only | grep -E -q "package\.json|package-lock\.json"; then
+              echo "📦 Installing production dependencies..."
+              if [ -f "package-lock.json" ]; then
+                npm ci --omit=dev --no-audit --no-fund
+              else
+                npm install --omit=dev --no-audit --no-fund
+              fi
             else
-              npm install --omit=dev --no-audit --no-fund
+              echo "⚡ Backend dependencies unchanged! Skipping npm install..."
             fi
 
             echo "🔄 Rolling reload PM2 cluster (0 ms downtime)..."
