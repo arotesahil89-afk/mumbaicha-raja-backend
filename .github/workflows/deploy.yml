@@ -35,14 +35,25 @@ jobs:
             cd "$API_DIR"
 
             echo "📥 Fetching latest backend code..."
-            OLD_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "HEAD~1")
+            OLD_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "HEAD")
             git fetch origin main
             git reset --hard origin/main
 
-            # ⚡ Safe dependency check under set -e
-            CHANGED_PKG=$(git diff "$OLD_COMMIT" HEAD --name-only 2>/dev/null | grep -E "package\.json|package-lock\.json" || true)
+            # Check if package.json or package-lock.json modified
+            CHANGED_PKG=""
+            if git cat-file -e "$OLD_COMMIT" 2>/dev/null; then
+              CHANGED_PKG=$(git diff --name-only "$OLD_COMMIT" HEAD 2>/dev/null | grep -E "package\.json|package-lock\.json" || true)
+            fi
 
-            if [ ! -d "node_modules" ] || [ -n "$CHANGED_PKG" ]; then
+            NEED_INSTALL="false"
+            if [ ! -d "node_modules" ]; then
+              NEED_INSTALL="true"
+            fi
+            if [ -n "$CHANGED_PKG" ]; then
+              NEED_INSTALL="true"
+            fi
+
+            if [ "$NEED_INSTALL" = "true" ]; then
               echo "📦 Installing production dependencies..."
               if [ -f "package-lock.json" ]; then
                 npm ci --omit=dev --no-audit --no-fund
