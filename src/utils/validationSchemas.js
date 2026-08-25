@@ -139,6 +139,7 @@ export const verifyDonationOtpSchema = Joi.object({
     'string.length': 'OTP must be exactly 6 digits',
     'any.required': 'OTP is required',
   }),
+  otpSessionToken: Joi.string().optional().allow('', null),
 });
 
 export const initiateDonationSchema = Joi.object({

@@ -69,13 +69,19 @@ async function generateDonationNo() {
 export const donationsService = {
   // ─── 1. Send OTP for Phone Verification ─────────────────────────────────
   async sendOTP({ phone }) {
-    const cleanedPhone = String(phone).replace(/\D/g, '');
+    const cleanedPhone = String(phone).replace(/\D/g, '').slice(-10);
     
     // Generate secure 6-digit OTP
     const otp = String(Math.floor(100000 + Math.random() * 900000));
-    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 mins
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 mins
 
     otpCache.set(cleanedPhone, { otp, expiresAt, attempts: 0 });
+
+    // Generate cluster-safe HMAC session token (works across PM2 workers & server restarts)
+    const secret = process.env.JWT_SECRET || 'mumbaicharaja-otp-secret-key-2026';
+    const dataToSign = `${cleanedPhone}:${otp}:${expiresAt}`;
+    const sig = crypto.createHmac('sha256', secret).update(dataToSign).digest('hex');
+    const otpSessionToken = Buffer.from(JSON.stringify({ phone: cleanedPhone, expiresAt, sig })).toString('base64');
 
     // Send SMS via MSG91
     try {
@@ -84,43 +90,61 @@ export const donationsService = {
       console.warn('[SMS Dispatch Warning]:', smsErr.message);
     }
 
-    const isDev = process.env.NODE_ENV !== 'production';
     return {
       success: true,
       message: 'OTP sent to mobile number successfully',
-      devOtpHint: otp, // always provided in response for smooth testing
+      otpSessionToken,
+      devOtpHint: otp, // provided for testing
     };
   },
 
   // ─── 2. Verify OTP ───────────────────────────────────────────────────────
-  async verifyOTP({ phone, otp }) {
-    const cleanedPhone = String(phone).replace(/\D/g, '');
-    const entry = otpCache.get(cleanedPhone);
+  async verifyOTP({ phone, otp, otpSessionToken }) {
+    const cleanedPhone = String(phone).replace(/\D/g, '').slice(-10);
+    const trimmedOtp = String(otp || '').trim();
+    const isStaticTest = (trimmedOtp === '123456' || trimmedOtp === '999999');
 
-    const isStaticTest = (otp === '123456' || otp === '999999');
+    let verified = false;
 
-    if (!isStaticTest) {
-      if (!entry) {
-        throw new AppError('OTP expired or not requested. Please request a new OTP.', 400);
-      }
+    if (isStaticTest) {
+      verified = true;
+    }
 
-      if (Date.now() > entry.expiresAt) {
-        otpCache.delete(cleanedPhone);
-        throw new AppError('OTP has expired. Please request a new code.', 400);
-      }
-
-      if (entry.otp !== otp.trim()) {
-        entry.attempts += 1;
-        if (entry.attempts >= 5) {
-          otpCache.delete(cleanedPhone);
-          throw new AppError('Too many invalid attempts. Please request a new OTP.', 400);
+    // 1. Verify via stateless cluster-safe HMAC token
+    if (!verified && otpSessionToken) {
+      try {
+        const decoded = JSON.parse(Buffer.from(otpSessionToken, 'base64').toString('utf8'));
+        if (decoded && decoded.expiresAt && Date.now() <= decoded.expiresAt) {
+          const secret = process.env.JWT_SECRET || 'mumbaicharaja-otp-secret-key-2026';
+          const dataToVerify = `${cleanedPhone}:${trimmedOtp}:${decoded.expiresAt}`;
+          const expectedSig = crypto.createHmac('sha256', secret).update(dataToVerify).digest('hex');
+          if (decoded.sig === expectedSig) {
+            verified = true;
+          }
         }
-        throw new AppError('Invalid OTP verification code. Please try again.', 400);
+      } catch (e) {
+        // Fallback to cache
       }
     }
 
-    // Clear used OTP
-    otpCache.delete(cleanedPhone);
+    // 2. Verify via in-memory cache
+    if (!verified) {
+      const entry = otpCache.get(cleanedPhone);
+      if (entry) {
+        if (Date.now() > entry.expiresAt) {
+          otpCache.delete(cleanedPhone);
+          throw new AppError('OTP has expired. Please request a new code.', 400);
+        }
+        if (entry.otp === trimmedOtp) {
+          verified = true;
+          otpCache.delete(cleanedPhone);
+        }
+      }
+    }
+
+    if (!verified) {
+      throw new AppError('Invalid OTP verification code. Please check and try again.', 400);
+    }
 
     // Generate short-lived verification token
     const verificationToken = crypto.randomBytes(24).toString('hex');
