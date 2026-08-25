@@ -14,6 +14,7 @@ import '../models/Event.js';
 import '../models/AuditLog.js';
 import '../models/MerchandiseProduct.js';
 import '../models/MerchandiseOrder.js';   // must come after MerchandiseProduct (FK dep)
+import '../models/Donation.js';
 
 import sequelize from '../config/db.js';
 

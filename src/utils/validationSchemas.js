@@ -93,10 +93,10 @@ export const createOrderSchema = Joi.object({
   productName:   Joi.string().required(),
   productId:     Joi.string().optional().allow(null, ''),
   size:          Joi.string().required(),
-  quantity:      Joi.number().integer().min(1).max(100).required(),
+  quantity:      Joi.number().integer().min(1).max(50).required(),
   unitPrice:     Joi.number().positive().required(),
   totalAmount:   Joi.number().positive().required(),
-  paymentMethod: Joi.string().valid('online', 'pickup', 'card', 'upi', 'cod', 'ccavenue', 'razorpay').required(),
+  paymentMethod: Joi.string().valid('online', 'pickup', 'card', 'upi', 'cod').required(),
   paymentId:     Joi.string().optional().allow(null, ''),
   address:       Joi.string().optional().allow(null, ''),
   pincode:       Joi.string().optional().allow(null, ''),
@@ -122,3 +122,57 @@ export const updateOrderStatusSchema = Joi.object({
   ).optional(),
   otp: Joi.string().length(6).optional().allow('', null),
 });
+
+export const sendDonationOtpSchema = Joi.object({
+  phone: Joi.string().pattern(/^[6-9]\d{9}$/).required().messages({
+    'string.pattern.base': 'Please provide a valid 10-digit Indian mobile number',
+    'any.required': 'Phone number is required',
+  }),
+});
+
+export const verifyDonationOtpSchema = Joi.object({
+  phone: Joi.string().pattern(/^[6-9]\d{9}$/).required().messages({
+    'string.pattern.base': 'Please provide a valid 10-digit Indian mobile number',
+    'any.required': 'Phone number is required',
+  }),
+  otp: Joi.string().length(6).required().messages({
+    'string.length': 'OTP must be exactly 6 digits',
+    'any.required': 'OTP is required',
+  }),
+});
+
+export const initiateDonationSchema = Joi.object({
+  donorName: Joi.string().min(2).required().messages({
+    'string.min': 'Donor name must be at least 2 characters',
+    'any.required': 'Donor name is required',
+  }),
+  donorPhone: Joi.string().pattern(/^[6-9]\d{9}$/).required().messages({
+    'string.pattern.base': 'Please provide a valid 10-digit Indian mobile number',
+    'any.required': 'Donor phone is required',
+  }),
+  donorAddress: Joi.string().min(5).required().messages({
+    'string.min': 'Please enter a valid address (min 5 characters)',
+    'any.required': 'Address is required',
+  }),
+  amount: Joi.number().positive().min(1).required().messages({
+    'number.min': 'Donation amount must be at least ₹1',
+    'any.required': 'Donation amount is required',
+  }),
+  disclaimerAccepted: Joi.boolean().valid(true).required().messages({
+    'any.only': 'You must accept the terms and disclaimer to proceed',
+    'any.required': 'Disclaimer must be accepted',
+  }),
+  cause: Joi.string().optional().allow('', null),
+  donorEmail: Joi.string().email().optional().allow('', null),
+  panNumber: Joi.string().pattern(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i).optional().allow('', null).messages({
+    'string.pattern.base': 'Please provide a valid 10-character PAN number',
+  }),
+  verificationToken: Joi.string().optional().allow('', null),
+  notes: Joi.string().optional().allow('', null),
+});
+
+export const updateDonationStatusSchema = Joi.object({
+  status: Joi.string().valid('pending', 'confirmed', 'failed', 'refunded').required(),
+  notes: Joi.string().optional().allow('', null),
+});
+
