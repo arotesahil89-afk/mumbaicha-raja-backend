@@ -158,7 +158,7 @@ export const donationsService = {
   },
 
   // ─── 3. Initiate CCAvenue Donation ───────────────────────────────────────
-  async initiateDonation(data) {
+  async initiateDonation(data, reqContext = {}) {
     const donationNo = await generateDonationNo();
     const amountNum = Number(data.amount);
     const formattedAmount = amountNum.toFixed(2);
@@ -180,7 +180,20 @@ export const donationsService = {
     });
 
     const { merchantId, accessCode, workingKey, gatewayUrl } = getCCAvenueConfig();
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+    
+    // Dynamically resolve server host so it redirects to live domain on production
+    let backendUrl = process.env.BACKEND_URL;
+    if (!backendUrl) {
+      if (reqContext.origin && !reqContext.origin.includes('localhost')) {
+        backendUrl = reqContext.origin;
+      } else if (reqContext.host && !reqContext.host.includes('localhost')) {
+        backendUrl = `${reqContext.protocol || 'https'}://${reqContext.host}`;
+      } else if (process.env.NODE_ENV === 'production') {
+        backendUrl = 'https://mumbaicharaja.co';
+      } else {
+        backendUrl = 'http://localhost:5000';
+      }
+    }
 
     const redirectUrl = `${backendUrl}/api/donations/ccavenue-response`;
     const cancelUrl = `${backendUrl}/api/donations/ccavenue-response`;
@@ -220,9 +233,21 @@ export const donationsService = {
   },
 
   // ─── 4. Handle CCAvenue Response Callback ────────────────────────────────
-  async handleCCAvenueResponse(encResp) {
+  async handleCCAvenueResponse(encResp, reqContext = {}) {
     const { workingKey } = getCCAvenueConfig();
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    
+    let frontendUrl = process.env.FRONTEND_URL;
+    if (!frontendUrl) {
+      if (reqContext.origin && !reqContext.origin.includes('localhost')) {
+        frontendUrl = reqContext.origin;
+      } else if (reqContext.host && !reqContext.host.includes('localhost')) {
+        frontendUrl = `${reqContext.protocol || 'https'}://${reqContext.host}`;
+      } else if (process.env.NODE_ENV === 'production') {
+        frontendUrl = 'https://mumbaicharaja.co';
+      } else {
+        frontendUrl = 'http://localhost:3000';
+      }
+    }
 
     if (!encResp) {
       return {
