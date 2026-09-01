@@ -27,17 +27,35 @@ const app = express();
 
 // Security middleware
 app.use(helmet());
+
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+  "https://mumbaicharaja.co",
+  "https://www.mumbaicharaja.co",
+  "http://mumbaicharaja.co",
+  "http://www.mumbaicharaja.co",
+  "https://nexbuild-xaee.onrender.com",
+];
+
 app.use(cors({
-  origin: [
-    // Local development
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",
-    // Production (keep if needed)
-    "https://nexbuild-xaee.onrender.com",
-  ],
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (
+      allowedOrigins.indexOf(origin) !== -1 ||
+      origin.endsWith('.mumbaicharaja.co') ||
+      origin.includes('mumbaicharaja.co') ||
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1')
+    ) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
