@@ -340,7 +340,9 @@ export const donationsService = {
         amount: String(donation.amount),
         txnId: paymentId || '',
         paymentMode: resolvedMode,
-        donorName: donation.donorName,
+        donorName: donation.donorName || '',
+        donorPhone: donation.donorPhone || '',
+        donorAddress: donation.donorAddress || '',
       }).toString();
 
       return {
