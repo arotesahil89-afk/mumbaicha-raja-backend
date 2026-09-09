@@ -9,7 +9,7 @@ export const smsService = {
    */
   async sendOTP({ phone, otp }) {
     const authKey = process.env.MSG91_AUTH_KEY;
-    const templateId = process.env.MSG91_OTP_TEMPLATE_ID;
+    const templateId = process.env.MSG91_OTP_TEMPLATE_ID || process.env.MSG91_OTP_FLOW_ID;
 
     // Clean phone number (add 91 country code if 10 digits)
     let cleanedPhone = String(phone).replace(/\D/g, '');
@@ -21,7 +21,7 @@ export const smsService = {
       console.log('--------------------------------------------------');
       console.log(`[SMS MOCK] Devotee Phone OTP Verification`);
       console.log(`[SMS MOCK] To: +${cleanedPhone}`);
-      console.log(`[SMS MOCK] Message: Your Mumbai Cha Raja donation verification OTP is: ${otp}. Valid for 5 minutes.`);
+      console.log(`[SMS MOCK] Message: Use OTP ${otp} to verify your request. This OTP is valid for 10 minutes. Do not share it with anyone. Mumbai Cha Raja`);
       console.log('--------------------------------------------------');
       return { success: true, simulated: true };
     }
@@ -34,7 +34,9 @@ export const smsService = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          num: otp,
           OTP: otp,
+          otp: otp,
         }),
       });
 

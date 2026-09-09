@@ -95,7 +95,7 @@ export const msg91Service = {
     const senderId = process.env.MSG91_SENDER_ID || 'MRJA';
 
     if (!authKey || !flowId) {
-      console.log(`[Backend MSG91 OTP Simulation] OTP ${otpCode} for +${cleanedPhone}. Set MSG91_OTP_FLOW_ID in backend .env to enable live delivery.`);
+      console.log(`[Backend MSG91 OTP Simulation] Use OTP ${otpCode} to verify your request. This OTP is valid for 10 minutes. Do not share it with anyone. Mumbai Cha Raja (Sent to +${cleanedPhone})`);
       return { success: true, message: 'MSG91 OTP SMS provisioned in simulation mode.', simulated: true };
     }
 
@@ -106,6 +106,9 @@ export const msg91Service = {
         recipients: [
           {
             mobiles: cleanedPhone,
+            num: otpCode,
+            otp: otpCode,
+            OTP: otpCode,
             var1: otpCode
           }
         ]
