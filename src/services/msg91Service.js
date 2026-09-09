@@ -91,8 +91,8 @@ export const msg91Service = {
     }
 
     const authKey  = process.env.MSG91_AUTH_KEY;
-    const flowId   = process.env.MSG91_OTP_FLOW_ID || process.env.MSG91_FLOW_ID; // OTP Template ID
-    const senderId = process.env.MSG91_SENDER_ID || 'MRJA';
+    const flowId   = process.env.MSG91_OTP_FLOW_ID || process.env.MSG91_OTP_TEMPLATE_ID || '6a72f6a97d575680c2062492';
+    const senderId = process.env.MSG91_SENDER_ID || 'LSUMGG';
 
     if (!authKey || !flowId) {
       console.log(`[Backend MSG91 OTP Simulation] Use OTP ${otpCode} to verify your request. This OTP is valid for 10 minutes. Do not share it with anyone. Mumbai Cha Raja (Sent to +${cleanedPhone})`);
