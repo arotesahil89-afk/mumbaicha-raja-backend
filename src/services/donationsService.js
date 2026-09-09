@@ -92,9 +92,8 @@ export const donationsService = {
 
     return {
       success: true,
-      message: 'OTP sent to mobile number successfully',
+      message: 'OTP sent to mobile number via SMS successfully',
       otpSessionToken,
-      devOtpHint: otp, // provided for testing
     };
   },
 
@@ -102,16 +101,11 @@ export const donationsService = {
   async verifyOTP({ phone, otp, otpSessionToken }) {
     const cleanedPhone = String(phone).replace(/\D/g, '').slice(-10);
     const trimmedOtp = String(otp || '').trim();
-    const isStaticTest = (trimmedOtp === '123456' || trimmedOtp === '999999');
 
     let verified = false;
 
-    if (isStaticTest) {
-      verified = true;
-    }
-
     // 1. Verify via stateless cluster-safe HMAC token
-    if (!verified && otpSessionToken) {
+    if (otpSessionToken) {
       try {
         const decoded = JSON.parse(Buffer.from(otpSessionToken, 'base64').toString('utf8'));
         if (decoded && decoded.expiresAt && Date.now() <= decoded.expiresAt) {
