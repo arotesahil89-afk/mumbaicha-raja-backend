@@ -79,12 +79,14 @@ export const smsService = {
   },
 
   /**
-   * Send Donation Confirmation & Pavati Download Link SMS
+   * Send Donation Confirmation SMS
+   * Template: Your donation of Rs. {#num#} has been successfully received. Donation Ref No: {#alp#}. Thank you for your generous contribution and support. Ganpati Bappa Morya! - Mumbai Cha Raja
+   * DLT Template ID: 1177178896283942331
    */
   async sendDonationReceiptSMS({ donorName, donorPhone, amount, donationNo, receiptUrl }) {
     const authKey = process.env.MSG91_AUTH_KEY;
-    const flowId = process.env.MSG91_DONATION_FLOW_ID || process.env.MSG91_FLOW_ID;
-    const senderId = process.env.MSG91_SENDER_ID || 'MRJA';
+    const flowId = process.env.MSG91_DONATION_FLOW_ID || process.env.MSG91_DONATION_TEMPLATE_ID || '1177178896283942331';
+    const senderId = process.env.MSG91_SENDER_ID || 'LSUMGG';
 
     let cleanedPhone = String(donorPhone).replace(/\D/g, '');
     if (cleanedPhone.length === 10) {
@@ -93,13 +95,13 @@ export const smsService = {
 
     const downloadLink = receiptUrl || `https://mumbaicharaja.co/pavati/${donationNo}`;
 
-    if (!authKey || !flowId) {
+    if (!authKey) {
       console.log('--------------------------------------------------');
       console.log(`[SMS MOCK] Donation Receipt Confirmation`);
       console.log(`[SMS MOCK] To: +${cleanedPhone}`);
       console.log(`[SMS MOCK] Name: ${donorName}`);
       console.log(`[SMS MOCK] Amount: ₹${amount}`);
-      console.log(`[SMS MOCK] Message: || श्री गजानन प्रसन्न || धन्यवाद ${donorName}, लालबाग सार्वजनिक उत्सव मंडळ, गणेशगल्ली (मुंबईचा राजा) साठी तुमची ₹${amount} ची देणगी यशस्वीरित्या जमा झाली आहे. आपली अधिकृत पावती डाउनलोड करा: ${downloadLink}`);
+      console.log(`[SMS MOCK] Message: Your donation of Rs. ${amount} has been successfully received. Donation Ref No: ${donationNo}. Thank you for your generous contribution and support. Ganpati Bappa Morya! - Mumbai Cha Raja`);
       console.log('--------------------------------------------------');
       return { success: true, simulated: true };
     }
@@ -113,24 +115,31 @@ export const smsService = {
         },
         body: JSON.stringify({
           template_id: flowId,
+          sender: senderId,
           short_url: '0',
           recipients: [
             {
               mobiles: cleanedPhone,
-              name: donorName,
+              num: String(amount),
+              alp: String(donationNo),
+              NUM: String(amount),
+              ALP: String(donationNo),
+              var1: String(amount),
+              var2: String(donationNo),
               amount: String(amount),
+              donation_no: String(donationNo),
+              name: donorName,
               link: downloadLink,
-              donation_no: donationNo,
             },
           ],
         }),
       });
 
       const data = await response.json();
-      console.log('[MSG91 Flow Response]:', data);
+      console.log('[MSG91 Donation Confirmation Flow Response]:', data);
       return { success: true, data };
     } catch (err) {
-      console.error('[MSG91 Flow Error]:', err);
+      console.error('[MSG91 Donation Confirmation Flow Error]:', err);
       return { success: false, error: err.message };
     }
   },
