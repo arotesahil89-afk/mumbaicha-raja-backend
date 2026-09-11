@@ -80,12 +80,12 @@ export const smsService = {
 
   /**
    * Send Donation Confirmation SMS
-   * Template: Your donation of Rs. {#num#} has been successfully received. Donation Ref No: {#alp#}. Thank you for your generous contribution and support. Ganpati Bappa Morya! - Mumbai Cha Raja
-   * DLT Template ID: 1177178896283942331
+   * Flow ID: 6aa3ec553e266d62f3081eb2 (DLT TE ID: 1177178896283942331, Sender ID: LSUMGG)
+   * Template Preview: Your donation of Rs. ##var1## has been successfully received. Donation Ref No: ##var2##. Thank you for your generous contribution and support. Ganpati Bappa Morya! - Mumbai Cha Raja
    */
   async sendDonationReceiptSMS({ donorName, donorPhone, amount, donationNo, receiptUrl }) {
     const authKey = process.env.MSG91_AUTH_KEY;
-    const flowId = process.env.MSG91_DONATION_FLOW_ID || process.env.MSG91_DONATION_TEMPLATE_ID || '1177178896283942331';
+    const flowId = process.env.MSG91_DONATION_FLOW_ID || '6aa3ec553e266d62f3081eb2';
     const senderId = process.env.MSG91_SENDER_ID || 'LSUMGG';
 
     let cleanedPhone = String(donorPhone).replace(/\D/g, '');
@@ -120,12 +120,12 @@ export const smsService = {
           recipients: [
             {
               mobiles: cleanedPhone,
+              var1: String(amount),
+              var2: String(donationNo),
               num: String(amount),
               alp: String(donationNo),
               NUM: String(amount),
               ALP: String(donationNo),
-              var1: String(amount),
-              var2: String(donationNo),
               amount: String(amount),
               donation_no: String(donationNo),
               name: donorName,
