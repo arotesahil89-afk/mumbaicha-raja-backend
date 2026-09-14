@@ -80,8 +80,8 @@ export const smsService = {
 
   /**
    * Send Donation Confirmation SMS
+   * Active Template: Your donation of Rs. ##var1## has been successfully received. Donation Ref No: ##var2##. Thank you for your generous contribution and support. Ganpati Bappa Morya! - Mumbai Cha Raja
    * Flow ID: 6aa3ec553e266d62f3081eb2 (DLT TE ID: 1177178896283942331, Sender ID: LSUMGG)
-   * Template Preview: Your donation of Rs. ##var1## has been successfully received. Donation Ref No: ##var2##. Thank you for your generous contribution and support. Ganpati Bappa Morya! - Mumbai Cha Raja
    */
   async sendDonationReceiptSMS({ donorName, donorPhone, amount, donationNo, receiptUrl }) {
     const authKey = process.env.MSG91_AUTH_KEY;
@@ -93,7 +93,7 @@ export const smsService = {
       cleanedPhone = `91${cleanedPhone}`;
     }
 
-    const downloadLink = receiptUrl || `https://mumbaicharaja.co/pavati/${donationNo}`;
+    const downloadLink = receiptUrl || `https://mumbaicharaja.co/p/?id=${donationNo}`;
 
     if (!authKey) {
       console.log('--------------------------------------------------');
@@ -116,12 +116,14 @@ export const smsService = {
         body: JSON.stringify({
           template_id: flowId,
           sender: senderId,
-          short_url: '0',
+          short_url: '1',
           recipients: [
             {
               mobiles: cleanedPhone,
+              // Required flow template variables:
               var1: String(amount),
               var2: String(donationNo),
+              // Secondary fallback variables:
               num: String(amount),
               alp: String(donationNo),
               NUM: String(amount),
@@ -130,12 +132,14 @@ export const smsService = {
               donation_no: String(donationNo),
               name: donorName,
               link: downloadLink,
+              orderno: String(donationNo),
+              txnid: String(donationNo),
             },
           ],
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       console.log('[MSG91 Donation Confirmation Flow Response]:', data);
       return { success: true, data };
     } catch (err) {

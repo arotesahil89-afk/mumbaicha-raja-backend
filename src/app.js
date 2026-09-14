@@ -14,6 +14,7 @@ import ordersRoutes from './routes/orders.js';
 import shippingRoutes from './routes/shipping.js';
 import merchandiseRoutes from './routes/merchandise.js';
 import donationsRoutes from './routes/donations.js';
+import liveStreamRoutes from './routes/liveStream.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -126,6 +127,7 @@ app.use('/api/orders', ordersRoutes);
 app.use('/api/shipping', shippingRoutes);
 app.use('/api/merchandise', merchandiseRoutes);
 app.use('/api/donations', donationsRoutes);
+app.use('/api/live-stream', liveStreamRoutes);
 
 // 404 handler
 app.use((req, res) => {
