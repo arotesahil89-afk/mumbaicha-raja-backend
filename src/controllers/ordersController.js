@@ -176,8 +176,7 @@ export const ordersController = {
       params.append('cancel_url', redirectUrl);
       params.append('billing_name', order.customerName);
       params.append('billing_tel', order.customerPhone);
-      // Hardcoded CCAvenue billing email as requested (Backup: order.customerEmail)
-      params.append('billing_email', 'MumbaichaRaja.LSUM@gmail.com');
+      params.append('billing_email', order.customerEmail);
       if (order.address) {
         params.append('billing_address', order.address);
       }
