@@ -208,7 +208,8 @@ export const donationsService = {
     params.append('billing_zip', '400012');
     params.append('billing_country', 'India');
     params.append('billing_tel', data.donorPhone || '');
-    params.append('billing_email', data.donorEmail || 'devotee@mumbaicharaja.com');
+    // Hardcoded CCAvenue billing email as requested (Backup: data.donorEmail || 'devotee@mumbaicharaja.com')
+    params.append('billing_email', 'MumbaichaRaja.LSUM@gmail.com');
     params.append('merchant_param1', donation.id);
     params.append('merchant_param2', data.cause || 'Centenary Celebration Fund');
 
