@@ -95,17 +95,22 @@ export const smsService = {
       cleanedPhone = `91${cleanedPhone}`;
     }
 
-    // DLT approved CTA Short Domain URL sample: https://mumbaicharaja.co/LSUMGG/DON-20260914-001
+    // DLT approved CTA Short Domain URL format: https://mumbaicharaja.co/LSUMGG/DON-XXXXXXXX-XXX
     const shortCtaDomain = process.env.SMS_SHORT_CTA_DOMAIN || 'https://mumbaicharaja.co/LSUMGG/';
-    const downloadLink = receiptUrl || `${shortCtaDomain}${donationNo}`;
+    const cleanDomain = shortCtaDomain.endsWith('/') ? shortCtaDomain : `${shortCtaDomain}/`;
+    const downloadLink = `${cleanDomain}${donationNo}`;
+
+    // Ensure amount is strictly formatted as an integer (e.g. 2001 or 1, not float like 1.00)
+    const formattedAmount = String(Math.round(Number(amount) || 0));
+    const formattedDonorName = donorName || 'Devotee';
 
     if (!authKey) {
       console.log('--------------------------------------------------');
       console.log(`[SMS MOCK] Donation Receipt Confirmation`);
       console.log(`[SMS MOCK] To: +${cleanedPhone}`);
-      console.log(`[SMS MOCK] Name: ${donorName || 'Devotee'}`);
-      console.log(`[SMS MOCK] Amount: ₹${amount}`);
-      console.log(`[SMS MOCK] Message: Thank you ${donorName || 'Devotee'}! Rs. ${amount} donated to Mumbai Cha Raja confirmed. Ref: ${donationNo}. Receipt: ${downloadLink}. Ganpati Bappa Morya! -Mumbai Cha Raja`);
+      console.log(`[SMS MOCK] Name: ${formattedDonorName}`);
+      console.log(`[SMS MOCK] Amount: ₹${formattedAmount}`);
+      console.log(`[SMS MOCK] Message: Thank you ${formattedDonorName}! Rs. ${formattedAmount} donated to Mumbai Cha Raja confirmed. Ref: ${donationNo}. Receipt: ${downloadLink}. Ganpati Bappa Morya! -Mumbai Cha Raja`);
       console.log('--------------------------------------------------');
       return { success: true, simulated: true };
     }
@@ -120,22 +125,22 @@ export const smsService = {
         body: JSON.stringify({
           template_id: flowId,
           sender: senderId,
-          short_url: process.env.MSG91_SHORT_URL || '0', // 0 since URL format is pre-formed
+          short_url: process.env.MSG91_SHORT_URL || '0',
           recipients: [
             {
               mobiles: cleanedPhone,
               // Required flow template variables for DLT Template 1177178955987738284:
               // VAR 1 - NAME
-              // VAR 2 - AMOUNT
+              // VAR 2 - AMOUNT (strictly integer)
               // VAR 3 - RECEIPT NO
-              // VAR 4 - PDF URL
-              var1: donorName || 'Devotee',
-              var2: String(amount),
+              // VAR 4 - PDF URL (strictly https://mumbaicharaja.co/LSUMGG/DON-XXXXXXXX-XXX)
+              var1: formattedDonorName,
+              var2: formattedAmount,
               var3: String(donationNo),
               var4: downloadLink,
               // Secondary fallback keys:
-              name: donorName || 'Devotee',
-              amount: String(amount),
+              name: formattedDonorName,
+              amount: formattedAmount,
               donation_no: String(donationNo),
               receipt_no: String(donationNo),
               link: downloadLink,
