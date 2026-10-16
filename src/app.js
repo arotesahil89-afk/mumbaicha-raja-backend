@@ -15,6 +15,7 @@ import shippingRoutes from './routes/shipping.js';
 import merchandiseRoutes from './routes/merchandise.js';
 import donationsRoutes from './routes/donations.js';
 import liveStreamRoutes from './routes/liveStream.js';
+import uploadRoutes from './routes/upload.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -27,7 +28,9 @@ import { errorHandler } from './middleware/errorHandler.js';
 const app = express();
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+}));
 
 const allowedOrigins = [
   "http://localhost:3000",
@@ -120,6 +123,11 @@ app.get('/api/cicd', (req, res) => {
 
 // Routes
 app.use('/shipping_docs', express.static(path.join(__dirname, '../shipping_docs')));
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  next();
+}, express.static(path.join(__dirname, '../uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/awards', awardsRoutes);
 app.use('/api/events', eventsRoutes);
@@ -128,6 +136,7 @@ app.use('/api/shipping', shippingRoutes);
 app.use('/api/merchandise', merchandiseRoutes);
 app.use('/api/donations', donationsRoutes);
 app.use('/api/live-stream', liveStreamRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // 404 handler
 app.use((req, res) => {
